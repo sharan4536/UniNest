@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function emailVerified() { return request.auth.token.email_verified == true; }
+    function isVIT() {
+      return request.auth.token.email != null &&
+             request.auth.token.email.endsWith('@vitstudent.ac.in');
+    }
+
+    // Profiles: users manage their own profile. Reads allowed to signed-in users.
+    match /profiles/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && emailVerified() && isVIT() && request.auth.uid == uid;
+    }
+
+    // Public user directory (names, majors). Writable only by verified VIT users.
+    match /users/{id} {
+      allow read: if true;
+      allow write: if isSignedIn() && emailVerified() && isVIT();
+    }
+
+    // Realtime friend locations: only owner can write their own location; signed-in users can read.
+    match /friendLocations/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && emailVerified() && isVIT() && request.auth.uid == uid;
+    }
+
+    // Messaging: restrict to verified VIT users. You can narrow further by participant checks later.
+    match /conversations/{doc=**} {
+      allow read, write: if isSignedIn() && emailVerified() && isVIT();
+    }
+
+    match /messages/{doc=**} {
+      allow read, write: if isSignedIn() && emailVerified() && isVIT();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

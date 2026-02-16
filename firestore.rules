@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function emailVerified() { return request.auth.token.email_verified == true; }
+    function isVIT() {
+      return request.auth.token.email != null && (
+             request.auth.token.email.endsWith('@vitstudent.ac.in') ||
+             request.auth.token.email.endsWith('@vit.ac.in') ||
+             request.auth.token.email.endsWith('@vitap.ac.in') ||
+             request.auth.token.email.endsWith('@vitbhopal.ac.in')
+      );
+    }
+
+    // Enhanced rules for user profiles - allow reading all profiles for signed-in users
+    // This enables friend profile viewing, discover page functionality, etc.
+    match /profiles/{uid} {
+      allow read: if isSignedIn();  // Any signed-in user can read any profile
+      allow write: if isSignedIn() && request.auth.uid == uid;  // Users can only edit their own profile
+    }
+
+    // Enhanced rules for public user directory - allow reading all user data for signed-in users
+    // This supports friend discovery, profile viewing, and social features
+    match /users/{id} {
+      allow read: if isSignedIn();  // Any signed-in user can read any user data
+      allow write: if isSignedIn() && request.auth.uid == id;  // Users can only edit their own data
+    }
+
+    // Enhanced rules for friend locations - allow reading all locations for signed-in users
+    // This enables map features, friend tracking, and location-based functionality
+    match /friendLocations/{uid} {
+      allow read: if isSignedIn();  // Any signed-in user can read any friend location
+      allow write: if isSignedIn() && request.auth.uid == uid;  // Users can only update their own location
+    }
+
+    // Messaging: require signed-in users with verified email (domain-agnostic)
+    match /conversations/{doc=**} {
+      allow read, write: if isSignedIn() && emailVerified();
+    }
+
+    match /messages/{doc=**} {
+      allow read, write: if isSignedIn() && emailVerified();
+    }
+
+    // Timetables: users can only access their own timetable
+    match /timetables/{uid} {
+      // Allow any signed-in, email-verified user to read timetables (for friend viewing)
+      allow read: if isSignedIn() && emailVerified();
+      // Only the owner can write their timetable
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Study Groups: structured access rules
+    match /studyGroups/{groupId} {
+      function isOwner() { return isSignedIn() && resource.data.createdBy == request.auth.uid; }
+      function unchangedNonMemberFields() {
+        return request.resource.data.name == resource.data.name &&
+               request.resource.data.course == resource.data.course &&
+               request.resource.data.description == resource.data.description &&
+               request.resource.data.createdBy == resource.data.createdBy &&
+               request.resource.data.createdAt == resource.data.createdAt &&
+               request.resource.data.meetingTime == resource.data.meetingTime &&
+               request.resource.data.maxMembers == resource.data.maxMembers;
+      }
+      function joinBySelf() {
+        return request.resource.data.members.size() == resource.data.members.size() + 1 &&
+               request.resource.data.members.hasAll(resource.data.members) &&
+               !resource.data.members.hasAny([request.auth.uid]) &&
+               request.resource.data.members.hasAll([request.auth.uid]) &&
+               (!resource.data.maxMembers || request.resource.data.members.size() <= resource.data.maxMembers);
+      }
+      function leaveBySelf() {
+        return request.resource.data.members.size() == resource.data.members.size() - 1 &&
+               resource.data.members.hasAll(request.resource.data.members) &&
+               resource.data.members.hasAny([request.auth.uid]) &&
+               !request.resource.data.members.hasAny([request.auth.uid]);
+      }
+
+      // Anyone signed-in can read study groups
+      allow read: if isSignedIn();
+
+      // Create: signed-in user creates a group they own and initially joins
+      allow create: if isSignedIn() &&
+                    request.resource.data.createdBy == request.auth.uid &&
+                    request.resource.data.members is list &&
+                    request.resource.data.members.size() == 1 &&
+                    request.resource.data.members[0] == request.auth.uid &&
+                    request.resource.data.name is string &&
+                    request.resource.data.createdAt is timestamp &&
+                    (!('maxMembers' in request.resource.data) || request.resource.data.maxMembers is number);
+
+      // Update:
+      // - Owner: can update any fields except createdBy/createdAt must remain unchanged
+      // - Non-owner: can only change membership (join/leave) and must respect maxMembers
+      allow update: if isSignedIn() && (
+        (
+          isOwner() &&
+          request.resource.data.createdBy == resource.data.createdBy &&
+          request.resource.data.createdAt == resource.data.createdAt
+        ) || (
+          unchangedNonMemberFields() && (joinBySelf() || leaveBySelf())
+        )
+      );
+
+      // Delete: only owner
+      allow delete: if isOwner();
+    }
+
+    // Friend requests: users can read/write friend requests they're involved in
+    match /friendRequests/{requestId} {
+      function involvesUser() {
+        return isSignedIn() && (
+          request.auth.uid == resource.data.senderId ||
+          request.auth.uid == resource.data.receiverId ||
+          // Legacy field names support
+          request.auth.uid == resource.data.sender ||
+          request.auth.uid == resource.data.receiver ||
+          request.auth.uid == resource.data.from ||
+          request.auth.uid == resource.data.to
+        );
+      }
+
+      function involvesUserOnWrite() {
+        return isSignedIn() && (
+          request.auth.uid == request.resource.data.senderId ||
+          request.auth.uid == request.resource.data.receiverId ||
+          // Legacy field names support on write
+          request.auth.uid == request.resource.data.sender ||
+          request.auth.uid == request.resource.data.receiver ||
+          request.auth.uid == request.resource.data.from ||
+          request.auth.uid == request.resource.data.to
+        );
+      }
+
+      allow read: if involvesUser();
+      allow write: if involvesUser() || involvesUserOnWrite();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
