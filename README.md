@@ -44,3 +44,4 @@ If you need to sync user profiles across our Firebase backend, we've included a 
 This script scans each `profiles/{uid}` document, grabs the best available name (checking `name`, `displayName`, and `fullName`), and updates `users/{uid}.displayName`. It also tries to update the Firebase Auth `displayName` for the same user on a best-effort basis.
 
 Thanks for checking out UniNest!
+# UniNest
