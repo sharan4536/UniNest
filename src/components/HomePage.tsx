@@ -7,8 +7,9 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { toast } from 'sonner';
 import { isFirebaseConfigured, auth } from '../utils/firebase/client';
-import { getFriends, updateUserProfile, getFriendLocations, updateUserLocation, getCurrentLocation, FriendLocation, updateUserStatus, getUserStatus, getUserProfile, UserProfile, createConversation, getProfile, clearUserLocation, getEnhancedFriendProfile } from '../utils/firebase/firestore';
+import { getFriends, updateUserProfile, getFriendLocations, updateUserLocation, getCurrentLocation, FriendLocation, updateUserStatus, getUserStatus, getUserProfile, UserProfile, createConversation, getProfile, clearUserLocation, getEnhancedFriendProfile, getPulses, Pulse, createPulse, getCheckIns, CheckIn, createCheckIn } from '../utils/firebase/firestore';
 
 // Types to avoid `never` inference
 type LocationInfo = {
@@ -49,15 +50,28 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
     }
   });
 
+  // Pulses and Check-ins State
+  const [pulses, setPulses] = useState<Pulse[]>([]);
+  const [pulseModalOpen, setPulseModalOpen] = useState(false);
+  const [pulseText, setPulseText] = useState("");
+  const [pulseDuration, setPulseDuration] = useState("30");
+
+  const [checkins, setCheckins] = useState<CheckIn[]>([]);
+  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
+  const [checkinLocationInput, setCheckinLocationInput] = useState("Canteen");
+  const [checkinNote, setCheckinNote] = useState("");
+
   const toggleGhostMode = async () => {
     const next = !ghostMode;
     setGhostMode(next);
     try {
       localStorage.setItem('ghostMode', next ? 'on' : 'off');
-    } catch {}
+    } catch { }
     if (next) {
       await clearUserLocation();
       setLocationPermission('denied');
+    } else {
+      toast("You're visible again. Friends can see your location and status.");
     }
   };
 
@@ -69,10 +83,10 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
 
   // Handle direct message functionality
   const handleDirectMessage = async (friend: Friend) => {
-    const isUserFullyAuthenticated = isFirebaseConfigured && 
-                                   auth.currentUser && 
-                                   auth.currentUser.emailVerified;
-    
+    const isUserFullyAuthenticated = isFirebaseConfigured &&
+      auth.currentUser &&
+      auth.currentUser.emailVerified;
+
     if (!isUserFullyAuthenticated) {
       // For demo purposes, show an alert
       alert(`Demo Mode: Would start a conversation with ${friend.name}\n\nTo enable real messaging, please sign in with a verified email account.`);
@@ -90,7 +104,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
       }
     } catch (error: any) {
       console.error('Error starting conversation:', error);
-      
+
       // Handle specific Firebase permission errors
       if (error?.code === 'permission-denied' || error?.message?.includes('permissions')) {
         alert(`Authentication Required: To message ${friend.name}, please sign in with a verified VIT email account.\n\nThis demo shows the messaging interface, but requires proper authentication for full functionality.`);
@@ -118,11 +132,11 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
 
   useEffect(() => {
     // Check if we have Firebase configured, authenticated user, AND user meets security requirements
-    const isUserFullyAuthenticated = isFirebaseConfigured && 
-                                   auth.currentUser && 
-                                   auth.currentUser.emailVerified && 
-                                   auth.currentUser.email?.endsWith('@vitstudent.ac.in');
-    
+    const isUserFullyAuthenticated = isFirebaseConfigured &&
+      auth.currentUser &&
+      auth.currentUser.emailVerified &&
+      auth.currentUser.email?.endsWith('@vitstudent.ac.in');
+
     if (isUserFullyAuthenticated) {
       // Subscribe to real-time friends list
       const unsubFriends = getFriends((friendsList) => {
@@ -133,7 +147,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
               let profileDoc: any = null;
               try {
                 profileDoc = await getProfile(profile.uid);
-              } catch {}
+              } catch { }
               const resolvedName = (profileDoc && profileDoc.name) || profile.displayName || profile.email?.split('@')[0] || 'User';
               return {
                 id: profile.uid,
@@ -145,10 +159,10 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                 lastActive: profile.lastActive,
                 location: profile.location
                   ? {
-                      lat: profile.location.lat,
-                      lng: profile.location.lng,
-                      name: profile.location.name,
-                    }
+                    lat: profile.location.lat,
+                    lng: profile.location.lng,
+                    name: profile.location.name,
+                  }
                   : undefined,
               } as Friend;
             })
@@ -167,7 +181,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
               let profileDoc: any = null;
               try {
                 profileDoc = await getProfile(loc.uid);
-              } catch {}
+              } catch { }
               const resolvedName = (profileDoc && profileDoc.name) || loc.displayName || 'User';
               return {
                 id: loc.uid,
@@ -188,6 +202,11 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         })();
       });
 
+      // Subscribe to real-time Pulses
+      const unsubPulses = getPulses((fetchedPulses) => setPulses(fetchedPulses));
+      // Subscribe to Check-Ins
+      const unsubCheckins = getCheckIns((fetchedCheckIns) => setCheckins(fetchedCheckIns));
+
       // Update current user's location
       updateCurrentLocation();
 
@@ -196,6 +215,8 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         if (typeof unsubLocations === 'function') {
           unsubLocations();
         }
+        unsubPulses();
+        unsubCheckins();
       };
     } else {
       // No mock fallback: keep map centering attempt and show empty lists
@@ -209,11 +230,11 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
   // Load current user status
   useEffect(() => {
     const loadUserStatus = async () => {
-      const isUserFullyAuthenticated = isFirebaseConfigured && 
-                                     auth.currentUser && 
-                                     auth.currentUser.emailVerified && 
-                                     auth.currentUser.email?.endsWith('@vitstudent.ac.in');
-      
+      const isUserFullyAuthenticated = isFirebaseConfigured &&
+        auth.currentUser &&
+        auth.currentUser.emailVerified &&
+        auth.currentUser.email?.endsWith('@vitstudent.ac.in');
+
       if (isUserFullyAuthenticated) {
         try {
           const status = await getUserStatus();
@@ -239,11 +260,11 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         console.log('Invisible is ON. Skipping location update.');
         return;
       }
-      const isUserFullyAuthenticated = isFirebaseConfigured && 
-                                     auth.currentUser && 
-                                     auth.currentUser.emailVerified && 
-                                     auth.currentUser.email?.endsWith('@vitstudent.ac.in');
-      
+      const isUserFullyAuthenticated = isFirebaseConfigured &&
+        auth.currentUser &&
+        auth.currentUser.emailVerified &&
+        auth.currentUser.email?.endsWith('@vitstudent.ac.in');
+
       if (isUserFullyAuthenticated) {
         // Try to get precise GPS location
         try {
@@ -304,11 +325,11 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
 
   const handleStatusUpdate = async (status: 'in class' | 'in library' | 'in ground' | 'in hostel' | 'available') => {
     try {
-      const isUserFullyAuthenticated = isFirebaseConfigured && 
-                                     auth.currentUser && 
-                                     auth.currentUser.emailVerified && 
-                                     auth.currentUser.email?.endsWith('@vitstudent.ac.in');
-      
+      const isUserFullyAuthenticated = isFirebaseConfigured &&
+        auth.currentUser &&
+        auth.currentUser.emailVerified &&
+        auth.currentUser.email?.endsWith('@vitstudent.ac.in');
+
       if (isUserFullyAuthenticated) {
         await updateUserStatus(status);
         setCurrentStatus(status);
@@ -323,7 +344,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
     setSelectedFriend(friend);
     setProfileDialogOpen(true);
     setLoadingProfile(true);
-    
+
     try {
       if (friend.uid && isFirebaseConfigured) {
         const profile = await getUserProfile(friend.uid);
@@ -347,7 +368,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         let profileDoc: any = null;
         try {
           profileDoc = await getProfile(friend.uid);
-        } catch {}
+        } catch { }
 
         const user = {
           id: friend.uid,
@@ -428,7 +449,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
           });
           mapRef.current.addControl(new g.mapboxgl.NavigationControl(), 'top-right');
           mapRef.current.on('load', () => {
-            try { mapRef.current.resize(); } catch {}
+            try { mapRef.current.resize(); } catch { }
             setMapReady(true);
           });
           setStyleLabel(mapboxToken ? 'Using Mapbox streets style' : 'Using public OSM tiles');
@@ -460,7 +481,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
       if (!map || !container) return;
 
       const handleResize = () => {
-        try { map.resize(); } catch {}
+        try { map.resize(); } catch { }
       };
 
       // Window resize
@@ -471,7 +492,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
       try {
         ro = new ResizeObserver(() => handleResize());
         ro.observe(container);
-      } catch {}
+      } catch { }
 
       // Visibility changes (e.g., hidden -> shown)
       let io: IntersectionObserver | null = null;
@@ -480,7 +501,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
           entries.forEach((e) => { if (e.isIntersecting) handleResize(); });
         });
         io.observe(container);
-      } catch {}
+      } catch { }
 
       // Retry until the container has non-zero dimensions
       let attempts = 0;
@@ -498,8 +519,8 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
 
       return () => {
         window.removeEventListener('resize', handleResize);
-        try { ro && ro.disconnect(); } catch {}
-        try { io && io.disconnect(); } catch {}
+        try { ro && ro.disconnect(); } catch { }
+        try { io && io.disconnect(); } catch { }
       };
     }, [styleLabel]);
 
@@ -575,15 +596,15 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         {styleLabel && (
           <div className="mb-2 text-xs opacity-70">{styleLabel}</div>
         )}
-        <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
-          <div ref={mapContainerRef} className="w-full h-full bg-[#C6ECFF]" />
+        <div className="relative w-full h-[600px] rounded-xl overflow-hidden border border-gray-200 shadow-lg shadow-primary/5">
+          <div ref={mapContainerRef} className="w-full h-full bg-gray-50" />
           {!mapReady && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
-                <div className="text-4xl mb-2">🗺️</div>
-                <p className="text-sm opacity-75">Campus Map View</p>
-                <p className="text-xs opacity-60">
-                  {mapboxToken ? 'Loading map…' : 'Using public OSM tiles (no Mapbox token)'}
+                <div className="text-4xl mb-4">🗺️</div>
+                <p className="text-lg font-medium text-primary">Campus Map View</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {mapboxToken ? 'Loading map...' : 'Using public OSM tiles (no Mapbox token)'}
                 </p>
               </div>
             </div>
@@ -594,97 +615,227 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      <div className="text-center mb-6">
-        <h1 className="text-3xl mb-2">Welcome back, {currentUser?.name || currentUser?.displayName || 'User'}!</h1>
-        <p className="opacity-75">See where your friends are hanging out on campus</p>
+    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24 md:pb-8">
+      <div className="flex justify-end w-full animate-in fade-in duration-200" style={{ animationDelay: '0.05s' }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleGhostMode}
+          className={`rounded-full transition-all duration-300 border ${ghostMode
+            ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+        >
+          {ghostMode ? '👻 Ghost Mode Active' : '👁️ Visible'}
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>🗺️</span>
-              Campus Map
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-              <Select value={currentStatus} onValueChange={handleStatusUpdate}>
-                <SelectTrigger 
-                  className="w-full sm:w-[160px] h-10 bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                  aria-label="Select your current status"
-                >
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">🟢 Available</SelectItem>
-                  <SelectItem value="in class">📚 In Class</SelectItem>
-                  <SelectItem value="in library">📖 In Library</SelectItem>
-                  <SelectItem value="in ground">⚽ In Ground</SelectItem>
-                  <SelectItem value="in hostel">🏠 In Hostel</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap" aria-live="polite">
-                <span className="text-xs opacity-70">Invisible</span>
-                <Button
-                  variant={ghostMode ? 'destructive' : 'outline'}
-                  size="sm"
-                  onClick={toggleGhostMode}
-                  aria-pressed={ghostMode}
-                  aria-label={ghostMode ? 'Turn Invisible off' : 'Turn Invisible on'}
-                >
-                  {ghostMode ? 'On' : 'Off'}
-                </Button>
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isFirebaseConfigured && (
-            <div className="mb-2 flex gap-2">
-              {!ghostMode && locationPermission !== 'granted' && (
-                <Button
-                  onClick={requestLocationPermission}
-                  size="sm"
-                  variant="outline"
-                >
-                  📍 Share My Location
-                </Button>
-              )}
-              {!ghostMode && locationPermission === 'granted' && (
-                <Button
-                  onClick={updateCurrentLocation}
-                  size="sm"
-                  variant="outline"
-                >
-                  🔄 Update Location
-                </Button>
-              )}
-              {ghostMode && (
-                <Badge variant="secondary" className="h-8 items-center flex">Invisible is ON — location hidden</Badge>
-              )}
-            </div>
-          )}
-          <MapView />
-          {selectedFriend && (
-            <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: '#C6ECFF' }}>
+      <div className="text-center mb-8 space-y-2 animate-in fade-in duration-200" style={{ animationDelay: '0.1s' }}>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gradient">
+          Welcome back, {currentUser?.name?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'User'}!
+        </h1>
+        <p className="text-lg text-slate-500 font-medium">See where your friends are hanging out on campus</p>
+      </div>
+
+      <div className="animate-in fade-in duration-200" style={{ animationDelay: '0.2s' }}>
+        <Card className="glass-card border-none overflow-hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback>{(selectedFriend.name || selectedFriend.displayName || 'U').charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-medium">{selectedFriend.name || selectedFriend.displayName}</h3>
-                </div>
-                <Badge variant="default">
-                  online
-                </Badge>
+                <span className="text-2xl drop-shadow-md">🗺️</span>
+                <span className="text-2xl font-bold text-foreground">Campus Map</span>
               </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCheckinModalOpen(true)}
+                  className="rounded-full bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50"
+                  disabled={ghostMode}
+                >
+                  📍 Check In
+                </Button>
+                <div className="flex items-center gap-2 bg-slate-50/50 p-1 rounded-full border border-slate-100">
+                  <Select value={currentStatus} onValueChange={handleStatusUpdate}>
+                    <SelectTrigger
+                      className="w-full sm:w-[160px] h-9 border-none bg-transparent hover:bg-white/50 focus:ring-0 shadow-none text-slate-600 font-medium"
+                      aria-label="Select your current status"
+                    >
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="glass-panel border-white/50">
+                      <SelectItem value="available">🟢 Available</SelectItem>
+                      <SelectItem value="in class">📚 In Class</SelectItem>
+                      <SelectItem value="in library">📖 In Library</SelectItem>
+                      <SelectItem value="in ground">⚽ In Ground</SelectItem>
+                      <SelectItem value="in hostel">🏠 In Hostel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isFirebaseConfigured && (
+              <div className="mb-4 flex gap-2">
+                {!ghostMode && locationPermission !== 'granted' && (
+                  <Button
+                    onClick={requestLocationPermission}
+                    size="sm"
+                    variant="outline"
+                    className="border-primary/50 text-primary hover:bg-primary/10"
+                  >
+                    📍 Share My Location
+                  </Button>
+                )}
+                {!ghostMode && locationPermission === 'granted' && (
+                  <Button
+                    onClick={updateCurrentLocation}
+                    size="sm"
+                    className="bg-white text-sky-600 border border-sky-100 hover:bg-sky-50 shadow-sm rounded-full"
+                  >
+                    🔄 Update Location
+                  </Button>
+                )}
+                {ghostMode && (
+                  <Badge variant="secondary" className="h-8 items-center flex bg-destructive/20 text-destructive border border-destructive/30">
+                    Invisible is ON — location hidden
+                  </Badge>
+                )}
+              </div>
+            )}
+            <div className="rounded-2xl overflow-hidden ring-4 ring-slate-50/50 shadow-inner">
+              <MapView />
             </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Friend Profile Dialog */}
-      {profileDialogOpen && (
+            {selectedFriend && (
+              <div className="mt-4 p-4 rounded-2xl bg-sky-50/50 border border-sky-100 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="w-14 h-14 ring-4 ring-white shadow-md">
+                      <AvatarFallback className="bg-gradient-to-br from-sky-200 to-blue-200 text-sky-700 font-bold text-xl">{(selectedFriend.name || selectedFriend.displayName || 'U').charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-[3px] border-white shadow-sm"></div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-800">{selectedFriend.name || selectedFriend.displayName}</h3>
+                    <p className="text-sm text-slate-500 font-medium">{selectedFriend.location?.name || 'Unknown Location'}</p>
+                  </div>
+                </div>
+                <Button onClick={() => openFriendProfile(selectedFriend)} className="soft-button bg-white text-sky-600 hover:text-sky-700">
+                  View Profile
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Connect Social Row: Pulses and Check-ins */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 animate-in fade-in duration-200" style={{ animationDelay: '0.3s' }}>
+          
+          {/* Active Pulses */}
+          <Card className="glass-card border-none overflow-hidden h-[300px] flex flex-col">
+            <CardHeader className="py-4 border-b border-white/20 bg-gradient-to-r from-orange-50 to-rose-50">
+              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                <span className="text-xl">✨</span> Friends' Pulses
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 overflow-y-auto flex-1 space-y-3 scrollbar-thin scrollbar-thumb-gray-200">
+              {pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 p-4 text-center">
+                  <span className="text-3xl mb-2 grayscale opacity-50">✨</span>
+                  <p>No active pulses right now.</p>
+                </div>
+              ) : (
+                pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).map(pulse => {
+                  const friend = friends.find(f => f.uid === pulse.createdBy) || friendLocations.find(f => f.uid === pulse.createdBy);
+                  const isFriend = !!friend;
+                  if (!isFriend) return null; // Show only friends' pulses for safety
+                  
+                  return (
+                    <div key={pulse.id} className="p-3 bg-white/70 rounded-2xl border border-white/40 shadow-sm flex items-start gap-3 hover:shadow-md transition-all">
+                      <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
+                        <AvatarFallback className="bg-orange-100 text-orange-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-bold text-sm text-slate-800">{friend.name}</h4>
+                          <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                            {pulse.location || 'Campus'}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 text-sm mt-1">{pulse.text}</p>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="mt-2 h-7 text-xs rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
+                          onClick={() => handleDirectMessage(friend)}
+                        >
+                          Join
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Who's Around (Check-ins) */}
+          <Card className="glass-card border-none overflow-hidden h-[300px] flex flex-col">
+            <CardHeader className="py-4 border-b border-white/20 bg-gradient-to-r from-indigo-50 to-sky-50">
+              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                <span className="text-xl">📍</span> Who's Around
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 overflow-y-auto flex-1 space-y-3 scrollbar-thin scrollbar-thumb-gray-200">
+              {checkins.filter(c => !ghostMode && c.createdBy !== auth.currentUser?.uid).length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 p-4 text-center">
+                  <span className="text-3xl mb-2 grayscale opacity-50">📍</span>
+                  <p>No one checked in right now.</p>
+                </div>
+              ) : (
+                checkins.filter(c => !ghostMode && c.createdBy !== auth.currentUser?.uid).map(checkin => {
+                  const friend = friends.find(f => f.uid === checkin.createdBy) || friendLocations.find(f => f.uid === checkin.createdBy);
+                  const isFriend = !!friend;
+                  if (!isFriend) return null;
+                  
+                  // Compute time since checkin
+                  let timeString = 'Recently';
+                  if (checkin.createdAt && checkin.createdAt.toMillis) {
+                    const diffMins = Math.floor((Date.now() - checkin.createdAt.toMillis()) / 60000);
+                    if (diffMins < 1) timeString = 'Just now';
+                    else timeString = `${diffMins}m ago`;
+                  }
+
+                  return (
+                    <div key={checkin.id} className="p-3 bg-white/70 rounded-2xl border border-white/40 shadow-sm flex items-center gap-3">
+                      <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
+                        <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-sm text-slate-800">{friend.name}</h4>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
+                          <span className="text-indigo-500">{checkin.location}</span>
+                          <span className="text-slate-300">•</span>
+                          <span>{timeString}</span>
+                        </div>
+                        {checkin.note && <p className="text-xs text-slate-600 mt-1 italic">"{checkin.note}"</p>}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-full w-8 h-8 hover:bg-sky-50 text-sky-500"
+                        onClick={() => handleDirectMessage(friend)}
+                      >
+                         💬
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <Dialog open={profileDialogOpen} onOpenChange={(open: boolean) => {
           setProfileDialogOpen(open);
           if (!open) {
@@ -692,36 +843,38 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
             setSelectedFriendProfile(null);
           }
         }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader className="flex-shrink-0">
-              <DialogTitle>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col glass-panel border-white/60 p-0 text-slate-800 shadow-2xl sm:rounded-3xl">
+            <DialogHeader className="flex-shrink-0 p-6 border-b border-gray-100">
+              <DialogTitle className="text-xl font-bold text-foreground">
                 {selectedFriend?.name || selectedFriendProfile?.displayName || 'Friend Profile'}
               </DialogTitle>
             </DialogHeader>
-            
+
             {loadingProfile ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-600">Loading profile...</p>
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-sm text-muted-foreground">Accessing student database...</p>
                 </div>
               </div>
             ) : selectedFriendProfile ? (
-              <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+              <div className="space-y-6 overflow-y-auto flex-1 p-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                 {/* Profile Header */}
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
-                  <Avatar className="w-16 h-16">
-                    <AvatarFallback className="text-xl">
+                <div className="flex items-center gap-6 p-6 bg-white/50 rounded-xl border border-gray-100 backdrop-blur-md shadow-sm">
+                  <Avatar className="w-20 h-20 border-4 border-white shadow-md">
+                    <AvatarFallback className="text-2xl bg-gradient-to-br from-primary/10 to-secondary/10 text-primary">
                       {(selectedFriend?.name || selectedFriendProfile.displayName || '?').charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold">{selectedFriend?.name || selectedFriendProfile.displayName}</h3>
-                    <p className="text-gray-600">
-                      {selectedFriendProfile.university || 'University'} • {selectedFriendProfile.major || 'Major'} • {selectedFriendProfile.year || 'Year'}
+                  <div className="flex-1 space-y-2">
+                    <h3 className="text-2xl font-bold text-foreground">{selectedFriend?.name || selectedFriendProfile.displayName}</h3>
+                    <p className="text-muted-foreground flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-xs font-medium">{selectedFriendProfile.university || 'University'}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-xs font-medium">{selectedFriendProfile.major || 'Major'}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-xs font-medium">{selectedFriendProfile.year || 'Year'}</span>
                     </p>
                     {selectedFriendProfile.status && (
-                      <Badge variant="secondary" className="mt-1">
+                      <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5">
                         {selectedFriendProfile.status}
                       </Badge>
                     )}
@@ -730,52 +883,52 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
 
                 {/* Bio Section */}
                 {selectedFriendProfile.bio && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium mb-2">About</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">{selectedFriendProfile.bio}</p>
+                  <div className="p-4 bg-white/50 rounded-xl border border-gray-100">
+                    <h4 className="font-semibold mb-2 text-primary">About</h4>
+                    <p className="text-sm text-foreground/80 leading-relaxed">{selectedFriendProfile.bio}</p>
                   </div>
                 )}
 
                 {/* Tabs for detailed information */}
                 <Tabs defaultValue="details" className="w-full">
-                  <TabsList className="grid grid-cols-3 w-full">
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="interests">Interests</TabsTrigger>
-                    <TabsTrigger value="location">Location</TabsTrigger>
+                  <TabsList className="grid grid-cols-3 w-full bg-gray-100/50 border border-gray-200">
+                    <TabsTrigger value="details" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">Details</TabsTrigger>
+                    <TabsTrigger value="interests" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-secondary">Interests</TabsTrigger>
+                    <TabsTrigger value="location" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-green-600">Location</TabsTrigger>
                   </TabsList>
-                  
-                  <TabsContent value="details" className="mt-4 space-y-3">
-                    <div className="grid grid-cols-1 gap-3">
+
+                  <TabsContent value="details" className="mt-4 space-y-1">
+                    <div className="grid grid-cols-1 gap-2 bg-white/50 rounded-xl p-4 border border-gray-100">
                       {selectedFriendProfile.email && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-gray-600 font-medium">Email</span>
-                          <span className="text-gray-900">{selectedFriendProfile.email}</span>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
+                          <span className="text-muted-foreground font-medium">Email</span>
+                          <span className="text-foreground">{selectedFriendProfile.email}</span>
                         </div>
                       )}
                       {selectedFriendProfile.university && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-gray-600 font-medium">University</span>
-                          <span className="text-gray-900">{selectedFriendProfile.university}</span>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
+                          <span className="text-muted-foreground font-medium">University</span>
+                          <span className="text-foreground">{selectedFriendProfile.university}</span>
                         </div>
                       )}
                       {selectedFriendProfile.major && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-gray-600 font-medium">Major</span>
-                          <span className="text-gray-900">{selectedFriendProfile.major}</span>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
+                          <span className="text-muted-foreground font-medium">Major</span>
+                          <span className="text-foreground">{selectedFriendProfile.major}</span>
                         </div>
                       )}
                       {selectedFriendProfile.year && (
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-gray-600 font-medium">Year</span>
-                          <span className="text-gray-900">{selectedFriendProfile.year}</span>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
+                          <span className="text-muted-foreground font-medium">Year</span>
+                          <span className="text-foreground">{selectedFriendProfile.year}</span>
                         </div>
                       )}
                       {selectedFriendProfile.lastActive && (
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-gray-600 font-medium">Last Active</span>
-                          <span className="text-gray-900 text-sm">
-                            {selectedFriendProfile.lastActive.toDate ? 
-                              selectedFriendProfile.lastActive.toDate().toLocaleDateString() : 
+                        <div className="flex justify-between items-center py-3 last:border-0">
+                          <span className="text-muted-foreground font-medium">Last Active</span>
+                          <span className="text-foreground text-sm">
+                            {selectedFriendProfile.lastActive.toDate ?
+                              selectedFriendProfile.lastActive.toDate().toLocaleDateString() :
                               'Recently'
                             }
                           </span>
@@ -783,40 +936,40 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                       )}
                     </div>
                   </TabsContent>
-                  
+
                   <TabsContent value="interests" className="mt-4">
                     {selectedFriendProfile.interests && selectedFriendProfile.interests.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {selectedFriendProfile.interests.map((interest, i) => (
-                          <Badge key={i} variant="secondary" className="px-3 py-1">
+                          <Badge key={i} variant="secondary" className="px-3 py-1 bg-secondary/10 text-secondary border-secondary/30 hover:bg-secondary/20">
                             ⭐ {interest}
                           </Badge>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-12 text-muted-foreground/50 border border-dashed border-white/10 rounded-xl">
                         <p>No interests shared</p>
                       </div>
                     )}
                   </TabsContent>
-                  
+
                   <TabsContent value="location" className="mt-4">
                     <div className="space-y-3">
                       {selectedFriend?.location ? (
-                        <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-lg">📍</span>
-                            <h4 className="font-medium">Current Location</h4>
+                            <h4 className="font-medium text-primary">Current Location</h4>
                           </div>
-                          <p className="text-gray-700">{selectedFriend.location.name || 'Location shared'}</p>
+                          <p className="text-foreground">{selectedFriend.location.name || 'Location shared'}</p>
                           {selectedFriend.location.lat && selectedFriend.location.lng && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1 font-mono">
                               Coordinates: {selectedFriend.location.lat.toFixed(4)}, {selectedFriend.location.lng.toFixed(4)}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-12 text-muted-foreground/50 border border-dashed border-white/10 rounded-xl">
                           <p>Location not shared</p>
                         </div>
                       )}
@@ -825,29 +978,152 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                 </Tabs>
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-12 text-muted-foreground">
                 <p>Unable to load profile information</p>
               </div>
             )}
-            
-            <div className="pt-4 flex-shrink-0 border-t flex gap-2">
-              <Button 
-                onClick={() => setProfileDialogOpen(false)} 
-                variant="outline" 
-                className="flex-1"
+
+            <div className="p-4 border-t border-white/10 flex gap-3 bg-black/20">
+              <Button
+                onClick={() => setProfileDialogOpen(false)}
+                variant="ghost"
+                className="flex-1 hover:bg-white/10"
               >
                 Close
               </Button>
-              <Button 
-                className="flex-1" 
-                style={{ backgroundColor: '#C6ECFF', color: '#000' }}
+              <Button
+                onClick={() => selectedFriend && openFriendProfile(selectedFriend)}
+                className="flex-1 bg-primary hover:bg-primary/80 text-black font-bold shadow-[0_0_10px_rgba(0,240,255,0.3)] transition-all"
               >
-                💬 Message
+                Start Chat
               </Button>
             </div>
           </DialogContent>
         </Dialog>
-      )}
+
+        {/* Pulse Modal */}
+        <Dialog open={pulseModalOpen} onOpenChange={setPulseModalOpen}>
+          <DialogContent className="sm:max-w-md glass-panel border border-white/40 rounded-[2rem] p-6 shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-rose-500">
+                Create a Pulse
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">What are you doing? (Spontaneous Hangout)</label>
+                <Input 
+                  placeholder="e.g. Grabbing coffee, who's down?" 
+                  value={pulseText}
+                  onChange={(e) => setPulseText(e.target.value)}
+                  className="rounded-xl border-slate-200 bg-white/50 focus:bg-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Duration (Auto-expires)</label>
+                <Select value={pulseDuration} onValueChange={setPulseDuration}>
+                  <SelectTrigger className="w-full rounded-xl bg-white/50">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 Minutes</SelectItem>
+                    <SelectItem value="30">30 Minutes</SelectItem>
+                    <SelectItem value="60">1 Hour</SelectItem>
+                    <SelectItem value="120">2 Hours</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end mt-2">
+              <Button variant="ghost" onClick={() => setPulseModalOpen(false)} className="rounded-xl border border-slate-200">Cancel</Button>
+              <Button 
+                onClick={async () => {
+                  if (!pulseText.trim()) return;
+                  await createPulse(pulseText, parseInt(pulseDuration));
+                  setPulseModalOpen(false);
+                  setPulseText("");
+                }} 
+                className="bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-xl font-bold hover:opacity-90 shadow-lg shadow-orange-200/50"
+              >
+                Broadcast
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Check-In Modal */}
+        <Dialog open={checkinModalOpen} onOpenChange={setCheckinModalOpen}>
+          <DialogContent className="sm:max-w-md glass-panel border border-white/40 rounded-[2rem] p-6 shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-sky-500">
+                Location Check-In
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Where are you?</label>
+                <Select value={checkinLocationInput} onValueChange={setCheckinLocationInput}>
+                  <SelectTrigger className="w-full rounded-xl bg-white/50">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Canteen">🍔 Canteen</SelectItem>
+                    <SelectItem value="Library">📚 Library</SelectItem>
+                    <SelectItem value="Common Room">🛋️ Common Room</SelectItem>
+                    <SelectItem value="Sports Ground">⚽ Sports Ground</SelectItem>
+                    <SelectItem value="Academic Block">🏛️ Academic Block</SelectItem>
+                    <SelectItem value="Other">📍 Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {checkinLocationInput === "Other" && (
+                <div className="space-y-2">
+                  <Input 
+                    placeholder="Enter specific location..." 
+                    onChange={(e) => setCheckinLocationInput(e.target.value)}
+                    className="rounded-xl border-slate-200 bg-white/50 focus:bg-white"
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Note (Optional)</label>
+                <Input 
+                  placeholder="e.g. Studying for Finals / Eating lunch" 
+                  value={checkinNote}
+                  onChange={(e) => setCheckinNote(e.target.value)}
+                  className="rounded-xl border-slate-200 bg-white/50 focus:bg-white"
+                />
+              </div>
+              <p className="text-xs text-slate-500 font-medium italic">Check-ins auto-expire after 1 hour.</p>
+            </div>
+            <div className="flex gap-3 justify-end mt-2">
+              <Button variant="ghost" onClick={() => setCheckinModalOpen(false)} className="rounded-xl border border-slate-200">Cancel</Button>
+              <Button 
+                onClick={async () => {
+                  if (!checkinLocationInput.trim()) return;
+                  await createCheckIn(checkinLocationInput, checkinNote);
+                  setCheckinModalOpen(false);
+                  setCheckinNote("");
+                }} 
+                className="bg-gradient-to-r from-indigo-500 to-sky-500 text-white rounded-xl font-bold hover:opacity-90 shadow-lg shadow-indigo-200/50"
+              >
+                Check In
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Floating Pulse Button */}
+        {!ghostMode && (
+          <button 
+            onClick={() => setPulseModalOpen(true)}
+            className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-30 rounded-full px-6 h-14 bg-gradient-to-tr from-orange-500 to-rose-500 text-white shadow-xl shadow-orange-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all font-bold border-[3px] border-white text-lg group"
+          >
+            <span className="text-2xl mr-2 group-hover:rotate-12 transition-transform">✨</span> + Pulse
+          </button>
+        )}
+
+      </div>
     </div>
   );
 }

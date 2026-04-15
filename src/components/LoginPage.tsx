@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue, SelectLabel, SelectGroup } from './ui/select';
 import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { auth, db, isFirebaseConfigured } from '../utils/firebase/client';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -26,7 +26,7 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
       setError('Please enter your email address first');
       return;
     }
-    
+
     try {
       await sendPasswordResetEmail(auth, email);
       setInfo('Password reset email sent! Check your inbox.');
@@ -90,7 +90,7 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
           return;
         } catch (firebaseError: any) {
           console.error('Firebase auth error:', firebaseError);
-          
+
           // Handle specific Firebase errors with user-friendly messages
           if (firebaseError.code === 'auth/invalid-credential') {
             setError('Invalid email or password. Please try again.');
@@ -107,13 +107,13 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
           } else {
             setError(`Authentication error: ${firebaseError.message}`);
           }
-          
+
           // Don't proceed to fallback for specific Firebase errors
           if (firebaseError.code && firebaseError.code.startsWith('auth/')) {
             setLoading(false);
             return;
           }
-          
+
           // For other errors, continue to fallback
           throw firebaseError;
         }
@@ -131,51 +131,69 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
     }
   };
 
+  const handleGoogleLogin = () => {
+    setError('Google login not implemented yet.');
+  };
+
+  const handleDemoLogin = (role: string) => {
+    setError(`Demo login for ${role} not implemented yet.`);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#C6ECFF' }}>
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
-            <span className="text-2xl">🏫</span>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-sky-50 relative overflow-hidden">
+      {/* Background decoration with dreamy clouds/blobs */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/30 blur-[100px] floating" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-sky-200/30 blur-[100px] floating" style={{ animationDelay: '-2s' }} />
+        <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] rounded-full bg-indigo-200/20 blur-[80px] floating" style={{ animationDelay: '-4s' }} />
+      </div>
+
+      <Card className="w-full max-w-md glass-panel border-white/60 relative z-10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] slide-up-fade">
+        <CardHeader className="text-center space-y-4 pt-8">
+          <div className="mx-auto w-20 h-20 rounded-3xl flex items-center justify-center bg-gradient-to-br from-sky-400 to-blue-500 shadow-lg shadow-sky-200/50 text-white transform hover:scale-110 transition-transform duration-300">
+            <span className="text-4xl drop-shadow-sm">🏫</span>
           </div>
-          <CardTitle className="text-2xl">UniNest</CardTitle>
-          <CardDescription>
-            Connect with fellow students at your university
-          </CardDescription>
+          <div className="space-y-1">
+            <CardTitle className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-blue-600 font-heading tracking-tight">UniNest</CardTitle>
+            <CardDescription className="text-slate-500 text-lg font-medium">
+              Connect. Collaborate. Campus Life.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+              <div className="p-3 bg-red-50/80 border border-red-100 rounded-2xl text-red-600 text-sm backdrop-blur-sm animate-in fade-in slide-in-from-top-2 flex items-center justify-center">
                 {error}
               </div>
             )}
             {info && (
-              <div className="p-3 bg-blue-100 border border-blue-300 rounded text-blue-700 text-sm">
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-primary text-sm backdrop-blur-sm">
                 {info}
               </div>
             )}
-            
+
             {isSignUp && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name" className="ml-1 text-slate-600 font-medium">Full Name</Label>
                   <Input
                     id="name"
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
+                    className="rounded-xl border-slate-200 bg-white/50 focus:bg-white focus:border-sky-300 focus:ring-4 focus:ring-sky-50 transition-all duration-300 h-11"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="university">University</Label>
                     <Select value={university} onValueChange={setUniversity}>
-                      <SelectTrigger aria-label="Select University">
+                      <SelectTrigger aria-label="Select University" className="bg-white/50 border-input">
                         <SelectValue placeholder="Select University" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border-input">
                         <SelectGroup>
                           <SelectLabel>Available Locations</SelectLabel>
                           <SelectItem value="Vellore">Vellore</SelectItem>
@@ -189,10 +207,10 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
                   <div className="space-y-2">
                     <Label htmlFor="year">Year</Label>
                     <Select value={year} onValueChange={setYear}>
-                      <SelectTrigger aria-label="Select Year">
+                      <SelectTrigger aria-label="Select Year" className="bg-white/50 border-input">
                         <SelectValue placeholder="Select Year" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border-input">
                         <SelectItem value="1st Year">1st Year</SelectItem>
                         <SelectItem value="2nd Year">2nd Year</SelectItem>
                         <SelectItem value="3rd Year">3rd Year</SelectItem>
@@ -205,10 +223,10 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
                 <div className="space-y-2">
                   <Label htmlFor="major">Major</Label>
                   <Select value={major} onValueChange={setMajor}>
-                    <SelectTrigger aria-label="Select Major">
+                    <SelectTrigger aria-label="Select Major" className="bg-white/50 border-input">
                       <SelectValue placeholder="Select B.Tech Course" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-input">
                       <SelectGroup>
                         <SelectLabel>Popular B.Tech</SelectLabel>
                         <SelectItem value="CSE">Computer Science and Engineering (CSE)</SelectItem>
@@ -229,15 +247,21 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
                   </Select>
                   {major === 'OTHER' && (
                     <div className="mt-2">
-                      <Input id="major-custom" placeholder="Enter your branch" value={majorOther} onChange={(e) => setMajorOther(e.target.value)} />
+                      <Input
+                        id="major-custom"
+                        placeholder="Enter your branch"
+                        value={majorOther}
+                        onChange={(e) => setMajorOther(e.target.value)}
+                        className="bg-white/50 border-input"
+                      />
                     </div>
                   )}
                 </div>
               </>
             )}
-            
+
             <div className="space-y-2">
-              <Label htmlFor="email">University Email</Label>
+              <Label htmlFor="email" className="ml-1 text-slate-600 font-medium">University Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -245,23 +269,23 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="rounded-xl border-slate-200 bg-white/50 focus:bg-white focus:border-sky-300 focus:ring-4 focus:ring-sky-50 transition-all duration-300 h-11"
               />
               {isSignUp && (
-                <p className="text-xs opacity-70">Only VIT emails are accepted for registration (must end with @vitstudent.ac.in)</p>
+                <p className="text-xs text-slate-400 ml-1">Must end with @vitstudent.ac.in</p>
               )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="ml-1 text-slate-600 font-medium">Password</Label>
                 {!isSignUp && (
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    className="text-xs text-sky-500 hover:text-sky-600 flex items-center gap-1 transition-colors font-medium"
                     title="Forgot Password?"
                   >
-                    <span>❓</span>
-                    <span>Forgot?</span>
+                    Forgot?
                   </button>
                 )}
               </div>
@@ -271,56 +295,64 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="rounded-xl border-slate-200 bg-white/50 focus:bg-white focus:border-sky-300 focus:ring-4 focus:ring-sky-50 transition-all duration-300 h-11"
               />
             </div>
-            {!isSignUp && error.includes('verify') && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs opacity-70">Didn’t get the email?</span>
-                <button
-                  type="button"
-                  className="text-xs underline"
-                  onClick={async () => {
-                    try {
-                      if (auth.currentUser) {
-                        await sendEmailVerification(auth.currentUser);
-                        setInfo('Verification email re-sent. Please check your inbox.');
-                        setError('');
-                      } else {
-                        // Attempt sign-in silently to get user, then resend
-                        const creds = await signInWithEmailAndPassword(auth, email, password);
-                        await sendEmailVerification(creds.user);
-                        setInfo('Verification email re-sent. Please check your inbox.');
-                        setError('');
-                      }
-                    } catch (err) {
-                      setError('Could not send verification email. Please try again later.');
-                    }
-                  }}
-                >
-                  Resend verification email
-                </button>
-              </div>
-            )}
-            <Button 
-              type="submit" 
-              className="w-full" 
-              style={{ backgroundColor: '#C6ECFF', color: '#000' }}
+
+            <Button
+              type="submit"
+              className="w-full h-11 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-bold shadow-lg shadow-sky-200/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
               disabled={loading}
             >
-              {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+              {loading ? <span className="animate-pulse">Processing...</span> : (isSignUp ? 'Create Account' : 'Sign In')}
             </Button>
           </form>
-          <div className="mt-4 text-center">
+
+          <div className="mt-6 text-center">
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm underline"
+              className="text-sm text-slate-500 hover:text-sky-600 transition-colors font-medium"
             >
               {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
             </button>
           </div>
         </CardContent>
+        <CardFooter className="flex flex-col gap-4 border-t border-slate-100/50 pt-6">
+          <div className="relative w-full">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-100" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white/80 backdrop-blur px-2 text-slate-400 font-medium">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 w-full">
+            <Button
+              variant="outline"
+              onClick={() => handleDemoLogin('student')}
+              disabled={loading}
+              className="rounded-xl border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 h-10 transition-all duration-300"
+            >
+              Student Demo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleDemoLogin('admin')}
+              disabled={loading}
+              className="rounded-xl border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 h-10 transition-all duration-300"
+            >
+              Admin Demo
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
+
+      {/* Footer credits */}
+      <div className="absolute bottom-4 text-center text-slate-400 text-xs font-medium opacity-60">
+        © 2024 UniNest • Campus Social Network
+      </div>
     </div>
   );
 }

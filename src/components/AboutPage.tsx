@@ -34,7 +34,7 @@ export function AboutPage() {
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-8">
       <div className="text-center mb-8">
-        <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#C6ECFF' }}>
+        <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4 bg-primary/20 shadow-lg shadow-primary/20">
           {(() => {
             const [logoFailed] = [false];
             return (
@@ -55,24 +55,24 @@ export function AboutPage() {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-lg">
-            UniNest was created to help university students build meaningful connections and find study partners on campus. 
+            UniNest was created to help university students build meaningful connections and find study partners on campus.
             We believe that education is better when it's collaborative and social.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div className="text-center p-6 rounded-lg" style={{ backgroundColor: '#C6ECFF' }}>
+            <div className="text-center p-6 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors">
               <div className="text-3xl mb-3">🤝</div>
-              <h3 className="text-lg mb-2">Connect</h3>
-              <p className="text-sm opacity-75">Find and connect with fellow students in your courses and campus</p>
+              <h3 className="text-lg mb-2 font-semibold">Connect</h3>
+              <p className="text-sm text-muted-foreground">Find and connect with fellow students in your courses and campus</p>
             </div>
-            <div className="text-center p-6 rounded-lg" style={{ backgroundColor: '#C6ECFF' }}>
+            <div className="text-center p-6 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors">
               <div className="text-3xl mb-3">📍</div>
-              <h3 className="text-lg mb-2">Locate</h3>
-              <p className="text-sm opacity-75">Share your location and find study buddies near you on campus</p>
+              <h3 className="text-lg mb-2 font-semibold">Locate</h3>
+              <p className="text-sm text-muted-foreground">Share your location and find study buddies near you on campus</p>
             </div>
-            <div className="text-center p-6 rounded-lg" style={{ backgroundColor: '#C6ECFF' }}>
+            <div className="text-center p-6 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors">
               <div className="text-3xl mb-3">📚</div>
-              <h3 className="text-lg mb-2">Collaborate</h3>
-              <p className="text-sm opacity-75">Share timetables, organize study groups, and message directly</p>
+              <h3 className="text-lg mb-2 font-semibold">Collaborate</h3>
+              <p className="text-sm text-muted-foreground">Share timetables, organize study groups, and message directly</p>
             </div>
           </div>
         </CardContent>
@@ -87,59 +87,59 @@ export function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary/20 text-primary">
                   <span>🗺️</span>
                 </div>
                 <div>
                   <h4 className="font-medium">Campus Map Integration</h4>
-                  <p className="text-sm opacity-75">See where your friends are studying in real-time</p>
+                  <p className="text-sm text-muted-foreground">See where your friends are studying in real-time</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary/20 text-primary">
                   <span>💬</span>
                 </div>
                 <div>
                   <h4 className="font-medium">Direct Messaging</h4>
-                  <p className="text-sm opacity-75">Chat with friends and study partners instantly</p>
+                  <p className="text-sm text-muted-foreground">Chat with friends and study partners instantly</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary/20 text-primary">
                   <span>📅</span>
                 </div>
                 <div>
                   <h4 className="font-medium">Timetable Sharing</h4>
-                  <p className="text-sm opacity-75">Share and compare class schedules with friends</p>
+                  <p className="text-sm text-muted-foreground">Share and compare class schedules with friends</p>
                 </div>
               </div>
             </div>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary/20 text-primary">
                   <span>🔍</span>
                 </div>
                 <div>
                   <h4 className="font-medium">Friend Discovery</h4>
-                  <p className="text-sm opacity-75">Find students in your courses and departments</p>
+                  <p className="text-sm text-muted-foreground">Find students in your courses and departments</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary/20 text-primary">
                   <span>🔒</span>
                 </div>
                 <div>
                   <h4 className="font-medium">Privacy Controls</h4>
-                  <p className="text-sm opacity-75">Control who can see your location and information</p>
+                  <p className="text-sm text-muted-foreground">Control who can see your location and information</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C6ECFF' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary/20 text-primary">
                   <span>🎓</span>
                 </div>
                 <div>
                   <h4 className="font-medium">University Verified</h4>
-                  <p className="text-sm opacity-75">Secure platform verified through university email</p>
+                  <p className="text-sm text-muted-foreground">Secure platform verified through university email</p>
                 </div>
               </div>
             </div>
@@ -189,8 +189,8 @@ export function AboutPage() {
               <span>github.com/uninest</span>
             </div>
           </div>
-          <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: '#C6ECFF' }}>
-            <p className="text-sm"><strong>Version 1.0.0</strong></p>
+          <div className="mt-6 p-4 rounded-lg bg-secondary/10 border border-secondary/20">
+            <p className="text-sm text-secondary-foreground"><strong>Version 1.0.0</strong></p>
           </div>
         </CardContent>
       </Card>

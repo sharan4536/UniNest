@@ -136,6 +136,27 @@ service cloud.firestore {
       allow write: if involvesUser() || involvesUserOnWrite();
     }
 
+    // New Features: Pulses, Event Interest, SOS, Checkins
+    match /pulses/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    match /eventInterest/{eventId}/interested/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    match /sos/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    match /checkins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

@@ -1,25 +1,46 @@
+# UniNest
 
-  # UniNest Application
+Welcome to UniNest! We built this platform to help university students connect, manage their schedules, and find study buddies seamlessly.
 
-  This is a code bundle for UniNest Application. The original project is available at https://www.figma.com/design/aowiD55AdMBTFr5bO4Rgm0/UniNest-Application.
+## Getting Started
 
-  ## Running the code
+To get the app running locally, follow these simple steps:
 
-  Run `npm i` to install the dependencies.
+1. Install the necessary dependencies:
+   ```bash
+   npm install
+   ```
 
-  Run `npm run dev` to start the development server.
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-  ## Sync display names (profiles → users/Auth)
+## Admin Scripts
 
-  To update all Firebase `users.displayName` and Auth `displayName` to match the name stored in `profiles.name`, use the admin script:
+If you need to sync user profiles across our Firebase backend, we've included a handy script. This ensures that the display names in our `profiles` collection match the records in `users` and Firebase Auth.
 
-  1) Set admin credentials: `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`
-  2) Dry-run preview: `npm run sync:displaynames -- --dry`
-  3) Execute changes: `npm run sync:displaynames`
+### Syncing Display Names
 
-  Options:
-  - `--dry`: no writes, logs intended updates
-  - `--limit=N`: process only the first N profile documents
+1. Point to your Firebase admin credentials:
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+   ```
 
-  The script reads each `profiles/{uid}` document, using its `name` (or `displayName`/`fullName` fallback) and sets `users/{uid}.displayName` accordingly. It also attempts to update Firebase Auth `displayName` for the same UID (best-effort).
-  
+2. Run a dry run to see what will change (without actually writing to the database):
+   ```bash
+   npm run sync:displaynames -- --dry
+   ```
+
+3. When you're ready, execute the changes:
+   ```bash
+   npm run sync:displaynames
+   ```
+
+**Additional Options:**
+- `--dry`: Preview intended updates without any writes.
+- `--limit=N`: Process only the first N profile documents.
+
+This script scans each `profiles/{uid}` document, grabs the best available name (checking `name`, `displayName`, and `fullName`), and updates `users/{uid}.displayName`. It also tries to update the Firebase Auth `displayName` for the same user on a best-effort basis.
+
+Thanks for checking out UniNest!

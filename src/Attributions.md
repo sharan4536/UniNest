@@ -1,3 +1,6 @@
-This Figma Make file includes components from [shadcn/ui](https://ui.shadcn.com/) used under [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
+# Attributions
 
-This Figma Make file includes photos from [Unsplash](https://unsplash.com) used under [license](https://unsplash.com/license).
+A huge thanks to the open-source community! UniNest uses some awesome tools and resources to look its best:
+
+- **UI Components:** We used [shadcn/ui](https://ui.shadcn.com/) heavily for our component library (used under the [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)).
+- **Images:** Various photos and placeholders throughout the app are sourced from [Unsplash](https://unsplash.com) (used under their [license](https://unsplash.com/license)).

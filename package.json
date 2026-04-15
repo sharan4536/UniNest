@@ -38,6 +38,7 @@
             "input-otp": "^1.4.2",
             "lucide-react": "0.294.0",
             "next-themes": "^0.4.6",
+            "pdfjs-dist": "^5.5.207",
             "react": "^18.3.1",
             "react-day-picker": "^8.10.1",
             "react-dom": "^18.3.1",
@@ -46,22 +47,29 @@
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
             "tailwind-merge": "*",
+            "tesseract.js": "^7.0.0",
             "vaul": "^1.1.2"
       },
       "devDependencies": {
+            "@tailwindcss/vite": "^4.1.18",
             "@types/node": "^20.10.0",
-            "@types/react": "^19.1.13",
-            "@types/react-dom": "^19.1.9",
+            "@types/pdfjs-dist": "^2.10.377",
+            "@types/react": "^18.3.12",
+            "@types/react-dom": "^18.3.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "autoprefixer": "^10.4.24",
             "firebase-tools": "^14.22.0",
+            "postcss": "^8.5.6",
+            "tailwindcss": "^4.1.18",
+            "tailwindcss-animate": "^1.0.7",
             "vite": "6.3.5"
       },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "firebase:login": "firebase login",
-    "firebase:init": "firebase init firestore",
-    "firebase:rules": "firebase deploy --only firestore:rules",
-    "sync:displaynames": "node scripts/sync-displaynames.mjs"
-  }
+      "scripts": {
+            "dev": "vite",
+            "build": "vite build",
+            "firebase:login": "firebase login",
+            "firebase:init": "firebase init firestore",
+            "firebase:rules": "firebase deploy --only firestore:rules",
+            "sync:displaynames": "node scripts/sync-displaynames.mjs"
+      }
 }
