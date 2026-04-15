@@ -26,3 +26,4 @@ Thumbs.db
 
 # Netlify
 .netlify/
+build/
