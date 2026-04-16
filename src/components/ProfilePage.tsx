@@ -479,24 +479,21 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
-      <div className="text-center mb-8 animate-in fade-in duration-200" style={{ animationDelay: '0.1s' }}>
-        <h1 className="text-4xl font-bold text-gradient mb-2 tracking-tight">My Profile</h1>
-        <p className="text-slate-500 font-medium">Manage your UniNest profile and preferences</p>
+  return (
+    <div className="w-full max-w-2xl mx-auto space-y-8 pb-24 md:pb-8 px-2 mt-4">
+      <div className="flex flex-col px-2 animate-in fade-in">
+        <h1 className="text-[32px] font-extrabold tracking-tight text-slate-900 leading-tight">Profile</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-200" style={{ animationDelay: '0.2s' }}>
-        <Card className="lg:col-span-1 glass-card border-none overflow-hidden relative group">
-          <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-sky-400/20 to-blue-500/20 blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
-          <CardContent className="pt-12 relative z-10">
-            <div className="text-center space-y-6">
+      <div className="animate-in fade-in">
+        <div className="os-list-group p-5">
+            <div className="flex flex-col items-center text-center space-y-4">
               <div className="relative inline-block">
-                <div className="absolute inset-0 bg-sky-400/20 rounded-full blur-xl animate-pulse"></div>
-                <Avatar className="w-32 h-32 mx-auto border-[6px] border-white shadow-2xl relative z-10 bg-white ring-4 ring-sky-50">
+                <Avatar className="w-24 h-24 mx-auto shadow-sm ring-1 ring-slate-200">
                   {profileData.photoURL ? (
                     <AvatarImage src={profileData.photoURL} alt={profileData.name || 'Profile photo'} className="object-cover" />
                   ) : null}
-                  <AvatarFallback className="text-4xl bg-gradient-to-br from-sky-100 to-blue-200 text-sky-600 font-bold">
+                  <AvatarFallback className="text-3xl bg-slate-100 text-sky-600 font-bold">
                     {profileData.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
@@ -505,7 +502,7 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
                     type="button"
                     onClick={handlePickPhoto}
                     size="icon"
-                    className="rounded-full bg-secondary hover:bg-secondary/80 text-black shadow-lg"
+                    className="rounded-full w-8 h-8 bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 shadow-sm"
                     disabled={photoUploading}
                     title="Change Photo"
                   >
@@ -515,7 +512,7 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
               </div>
 
               {photoError && (
-                <p className="text-destructive text-xs">{photoError}</p>
+                <p className="text-red-500 text-[13px]">{photoError}</p>
               )}
               <input
                 ref={fileInputRef}
@@ -526,77 +523,66 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
               />
 
               <div className="space-y-1">
-                <h2 className="text-2xl font-bold text-foreground">{profileData.name}</h2>
-                <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
+                <h2 className="text-[22px] font-bold text-slate-900 tracking-tight leading-none">{profileData.name}</h2>
+                <div className="flex items-center justify-center gap-2 text-[14px] text-slate-500 font-medium">
                   <span>{profileData.major}</span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                   <span>{profileData.year}</span>
                 </div>
               </div>
 
-              <Badge variant="outline" className={`
-                px-4 py-1.5 text-sm rounded-full border-0 shadow-sm backdrop-blur-md
-                ${currentStatus === 'available' ? 'bg-green-100/50 text-green-700 ring-1 ring-green-200' :
-                  currentStatus === 'in class' ? 'bg-amber-100/50 text-amber-700 ring-1 ring-amber-200' :
-                    currentStatus === 'in library' ? 'bg-indigo-100/50 text-indigo-700 ring-1 ring-indigo-200' :
-                      currentStatus === 'in ground' ? 'bg-emerald-100/50 text-emerald-700 ring-1 ring-emerald-200' :
-                        'bg-slate-100/50 text-slate-700 ring-1 ring-slate-200'}
+              <span className={`
+                px-3 py-1 text-[13px] font-semibold rounded-full
+                ${currentStatus === 'available' ? 'bg-green-100 text-green-700' :
+                  currentStatus === 'in class' ? 'bg-amber-100 text-amber-700' :
+                    currentStatus === 'in library' ? 'bg-indigo-100 text-indigo-700' :
+                      currentStatus === 'in ground' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-slate-100 text-slate-700'}
               `}>
                 {currentStatus === 'available' ? '🟢 Available' :
                   currentStatus === 'in class' ? '📚 In Class' :
                     currentStatus === 'in library' ? '📖 In Library' :
                       currentStatus === 'in ground' ? '⚽ In Ground' :
                         currentStatus === 'in hostel' ? '🏠 In Hostel' : '🟢 Available'}
-              </Badge>
+              </span>
 
               <Button
                 onClick={() => setIsEditing(!isEditing)}
-                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-foreground transition-all duration-300 shadow-sm"
+                variant="ghost"
+                className="w-full bg-slate-50 text-sky-600 font-semibold hover:bg-slate-100 hover:text-sky-700 rounded-xl mt-2"
               >
                 {isEditing ? 'Cancel Editing' : 'Edit Profile'}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+        </div>
+      </div>
 
-        {/* Profile Details */}
-        <Card className="lg:col-span-2 glass-card border-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <span className="text-2xl">📝</span> Profile Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-muted-foreground">Full Name</Label>
-                {isEditing ? (
-                  <Input
-                    id="name"
-                    value={profileData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="bg-white border-gray-200 focus:border-primary/50 text-foreground"
-                  />
-                ) : (
-                  <p className="p-3 bg-gray-50/50 rounded-xl text-foreground/90 border border-gray-100">{profileData.name}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-muted-foreground">Email</Label>
-                {isEditing ? (
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profileData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="bg-white/5 border-white/10 focus:border-primary/50 text-foreground"
-                  />
-                ) : (
-                  <p className="p-3 bg-gray-50/50 rounded-xl text-foreground/90 border border-gray-100 break-all">{profileData.email}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="university" className="text-muted-foreground">University</Label>
-                {isEditing ? (
+      {isEditing && (
+        <div className="animate-in fade-in">
+          <h2 className="os-list-label">Personal Information</h2>
+          <div className="os-list-group">
+            <div className="os-list-row p-3">
+              <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">Full Name</span>
+              <Input
+                id="name"
+                value={profileData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className="flex-1 border-none shadow-none text-right px-0 text-[15px] text-slate-900 focus-visible:ring-0"
+              />
+            </div>
+            <div className="os-list-row p-3">
+              <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">Email</span>
+              <Input
+                id="email"
+                type="email"
+                value={profileData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className="flex-1 border-none shadow-none text-right px-0 text-[15px] text-slate-900 focus-visible:ring-0"
+              />
+            </div>
+            <div className="os-list-row p-3">
+              <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">University</span>
+              <div className="flex-1 flex justify-end">
                   <Select value={profileData.university} onValueChange={(v: string) => handleInputChange('university', v)}>
                     <SelectTrigger aria-label="Select University" className="bg-white/5 border-white/10 text-foreground">
                       <SelectValue placeholder="Select University" />
@@ -681,240 +667,275 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bio" className="text-muted-foreground">Bio</Label>
-              {isEditing ? (
-                <Textarea
-                  id="bio"
-                  value={profileData.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  rows={3}
-                  className="bg-white/5 border-white/10 text-foreground resize-none"
+                    <SelectTrigger className="border-none shadow-none text-[15px] focus:ring-0 text-right w-full justify-end flex-row-reverse gap-2 text-slate-900 bg-transparent">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VIT Vellore">VIT Vellore</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </div>
+            </div>
+            <div className="os-list-row p-3">
+              <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">Program</span>
+              <div className="flex-1 flex justify-end">
+                  <Select value={profileData.major === majorOther && majorOther !== '' ? 'OTHER' : profileData.major} onValueChange={(v: string) => handleInputChange('major', v)}>
+                    <SelectTrigger className="border-none shadow-none text-[15px] focus:ring-0 text-right w-full justify-end flex-row-reverse gap-2 text-slate-900 bg-transparent">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="B.Tech Computer Science (Core)">B.Tech Computer Science (Core)</SelectItem>
+                      <SelectItem value="B.Tech Computer Science (Bioinformatics)">B.Tech Computer Science (Bioinformatics)</SelectItem>
+                      <SelectItem value="B.Tech Computer Science (Information Security)">B.Tech Computer Science (InfoSec)</SelectItem>
+                      <SelectItem value="B.Tech Electronics & Communication">B.Tech Electronics</SelectItem>
+                      <SelectItem value="B.Tech Mechanical Engineering">B.Tech Mechanical</SelectItem>
+                      <SelectItem value="OTHER">Other/Specialization</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </div>
+            </div>
+            {profileData.major === 'OTHER' && (
+              <div className="os-list-row p-3">
+                <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">Specify</span>
+                <Input
+                  placeholder="E.g. MSc Data Science"
+                  value={majorOther}
+                  onChange={(e) => setMajorOther(e.target.value)}
+                  className="flex-1 border-none shadow-none text-right px-0 text-[15px] text-slate-900 focus-visible:ring-0"
                 />
-              ) : (
-                <p className="p-3 bg-gray-50/50 rounded-xl text-foreground/90 border border-gray-100 whitespace-pre-wrap">{profileData.bio}</p>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-muted-foreground">Interests & Clubs</Label>
-              {isEditing ? (
-                <div className="space-y-3">
-                  {profileData.interests.map((club, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <Input
-                        value={club}
-                        onChange={(e) => handleClubNameChange(index, e.target.value)}
-                        className="bg-white/5 border-white/10 text-foreground"
-                      />
-                      <Button variant="destructive" size="icon" onClick={() => handleRemoveClub(index)} className="shrink-0 bg-red-500/20 text-red-500 hover:bg-red-500/30">×</Button>
-                    </div>
-                  ))}
-                  <Button onClick={handleAddClub} variant="outline" className="w-full border-dashed border-white/20 hover:bg-white/5 text-muted-foreground">+ Add Interest</Button>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {profileData.interests.map((club, index) => (
-                    <Badge key={index} variant="secondary" className="px-3 py-1 bg-secondary/10 text-secondary border-secondary/30 hover:bg-secondary/20">
-                      {club}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {isEditing && (
-              <div className="flex gap-3 pt-4 border-t border-white/10">
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 bg-gradient-to-r from-primary to-secondary text-white font-bold shadow-md shadow-primary/20"
-                >
-                  {saving ? 'Saving Changes...' : 'Save Profile'}
-                </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+            <div className="os-list-row p-3">
+              <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">Year</span>
+              <div className="flex-1 flex justify-end">
+                <Select value={profileData.year} onValueChange={(v: string) => handleInputChange('year', v)}>
+                  <SelectTrigger className="border-none shadow-none text-[15px] focus:ring-0 text-right w-full justify-end flex-row-reverse gap-2 text-slate-900 bg-transparent">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1st Year">1st Year</SelectItem>
+                    <SelectItem value="2nd Year">2nd Year</SelectItem>
+                    <SelectItem value="3rd Year">3rd Year</SelectItem>
+                    <SelectItem value="4th Year">4th Year</SelectItem>
+                    <SelectItem value="Postgraduate">Postgraduate</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          
+          <h2 className="os-list-label mt-6">About & Bio</h2>
+          <div className="os-list-group">
+            <div className="p-3 bg-white">
+              <textarea
+                value={profileData.bio}
+                onChange={(e) => handleInputChange('bio', e.target.value)}
+                rows={3}
+                className="w-full resize-none p-2 border-0 bg-transparent text-[15px] text-slate-900 focus:outline-none placeholder:text-slate-400"
+                placeholder="Write a little about yourself..."
+              />
+            </div>
+          </div>
+
+          <h2 className="os-list-label mt-6">Interests</h2>
+          <div className="os-list-group">
+            {profileData.interests.map((club, index) => (
+              <div key={index} className="os-list-row p-3 h-12">
+                <Input
+                  value={club}
+                  onChange={(e) => handleClubNameChange(index, e.target.value)}
+                  className="flex-1 border-none shadow-none text-left px-2 text-[15px] text-slate-900 focus-visible:ring-0 h-full"
+                />
+                <Button variant="ghost" size="icon" onClick={() => handleRemoveClub(index)} className="shrink-0 text-red-500 rounded-full h-8 w-8 hover:bg-red-50">×</Button>
+              </div>
+            ))}
+            <div className="p-2 border-t border-slate-100 bg-white cursor-pointer" onClick={handleAddClub}>
+              <button className="w-full text-left px-3 py-2 text-[15px] font-medium text-sky-600 active:opacity-70 transition-opacity">
+                + Add Interest
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-8 mb-4">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full h-12 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-[16px] shadow-sm transition-all"
+            >
+              {saving ? 'Saving...' : 'Save Profile Settings'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Privacy settings */}
-      <div className="animate-in fade-in duration-200" style={{ animationDelay: '0.25s' }}>
-        <Card className="glass-card border-none bg-gradient-to-br from-white/90 to-slate-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <span className="text-2xl">🛡️</span> Privacy & Visibility
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white">
-                <div>
-                  <Label className="text-base font-medium">Location on Campus Map</Label>
-                  <p className="text-sm text-slate-500">Allow friends to see your precise location</p>
-                </div>
-                <Switch 
-                  checked={privacySettings.locationVisible}
-                  onCheckedChange={(c) => setPrivacySettings(p => ({ ...p, locationVisible: c }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white">
-                <div>
-                  <Label className="text-base font-medium">Online Status</Label>
-                  <p className="text-sm text-slate-500">Show when you are currently active</p>
-                </div>
-                <Switch 
-                  checked={privacySettings.onlineStatusVisible}
-                  onCheckedChange={(c) => setPrivacySettings(p => ({ ...p, onlineStatusVisible: c }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white">
-                <div>
-                  <Label className="text-base font-medium">Discover Visibility</Label>
-                  <p className="text-sm text-slate-500">Appear in the Discover buddy-matching feed</p>
-                </div>
-                <Switch 
-                  checked={privacySettings.discoverVisible}
-                  onCheckedChange={(c) => setPrivacySettings(p => ({ ...p, discoverVisible: c }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white">
-                <div>
-                  <Label className="text-base font-medium">Timetable Sharing</Label>
-                  <p className="text-sm text-slate-500">Allow friends to compare classes with you</p>
-                </div>
-                <Switch 
-                  checked={privacySettings.timetableVisible}
-                  onCheckedChange={(c) => setPrivacySettings(p => ({ ...p, timetableVisible: c }))}
-                />
-              </div>
+      <div className="animate-in fade-in">
+        <h2 className="os-list-label">Privacy & Visibility</h2>
+        <div className="os-list-group">
+          <div className="os-list-row">
+            <div className="flex flex-col">
+              <Label htmlFor="location-visibility" className="text-[15px] font-medium text-slate-800">Location Sharing</Label>
+              <span className="text-[12px] text-slate-500">Allow friends to see you on the map</span>
             </div>
-            <p className="text-xs text-center text-slate-400 mt-4">You can always change these visibility preferences later</p>
-          </CardContent>
-        </Card>
+            <Switch
+              id="location-visibility"
+              checked={privacySettings.locationVisible}
+              onCheckedChange={(checked) => handlePrivacyChange('locationVisible', checked)}
+              className="data-[state=checked]:bg-sky-500"
+            />
+          </div>
+
+          <div className="os-list-row">
+            <div className="flex flex-col">
+              <Label htmlFor="online-status" className="text-[15px] font-medium text-slate-800">Online Status</Label>
+              <span className="text-[12px] text-slate-500">Show when you are active on UniNest</span>
+            </div>
+            <Switch
+              id="online-status"
+              checked={privacySettings.onlineStatusVisible}
+              onCheckedChange={(checked) => handlePrivacyChange('onlineStatusVisible', checked)}
+              className="data-[state=checked]:bg-sky-500"
+            />
+          </div>
+
+          <div className="os-list-row">
+            <div className="flex flex-col">
+              <Label htmlFor="discoverability" className="text-[15px] font-medium text-slate-800">Discoverability</Label>
+              <span className="text-[12px] text-slate-500">Appear in student searches</span>
+            </div>
+            <Switch
+              id="discoverability"
+              checked={privacySettings.discoverable}
+              onCheckedChange={(checked) => handlePrivacyChange('discoverable', checked)}
+              className="data-[state=checked]:bg-sky-500"
+            />
+          </div>
+
+          <div className="os-list-row">
+            <div className="flex flex-col">
+              <Label htmlFor="timetable-sharing" className="text-[15px] font-medium text-slate-800">Timetable Sharing</Label>
+              <span className="text-[12px] text-slate-500">Let friends compare schedules with you</span>
+            </div>
+            <Switch
+              id="timetable-sharing"
+              checked={privacySettings.timetableShared}
+              onCheckedChange={(checked) => handlePrivacyChange('timetableShared', checked)}
+              className="data-[state=checked]:bg-sky-500"
+            />
+          </div>
+        </div>
+        {isEditing && <p className="mt-2 text-[12px] font-medium text-slate-400 ms-3">Privacy settings are automatically saved when you "Save Profile" above.</p>}
       </div>
 
-      {/* Stats Card */}
-      <div className="animate-in fade-in duration-200" style={{ animationDelay: '0.3s' }}>
-        <Card className="glass-card border-none bg-gradient-to-br from-white/90 to-sky-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <span className="text-2xl">📊</span> Activity Stats
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              <button
-                type="button"
-                onClick={() => setShowFriends((prev) => !prev)}
-                aria-expanded={showFriends}
-                aria-controls="friends-section"
-                className="p-6 rounded-2xl bg-white/60 border border-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
-              >
-                <div className="text-4xl font-bold text-slate-800 mb-2 group-hover:scale-110 transition-transform">{friends.length}</div>
-                <div className="text-sm font-medium text-slate-500 group-hover:text-sky-600 transition-colors">Friends</div>
-              </button>
-              <div className="p-6 rounded-2xl bg-white/60 border border-white shadow-sm hover:-translate-y-1 transition-all duration-300">
-                <div className="text-4xl font-bold text-slate-800 mb-2">5</div>
-                <div className="text-sm font-medium text-slate-500">Study Groups</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowClubs((prev) => !prev)}
-                aria-expanded={showClubs}
-                aria-controls="clubs-section"
-                className="p-6 rounded-2xl bg-white/60 border border-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
-              >
-                <div className="text-4xl font-bold text-slate-800 mb-2 group-hover:scale-110 transition-transform">{Array.isArray(profileData.interests) ? profileData.interests.length : 0}</div>
-                <div className="text-sm font-medium text-slate-500 group-hover:text-sky-600 transition-colors">Interests</div>
-              </button>
-              <div className="p-6 rounded-2xl bg-white/60 border border-white shadow-sm hover:-translate-y-1 transition-all duration-300">
-                <div className="text-4xl font-bold text-slate-800 mb-2">7</div>
-                <div className="text-sm font-medium text-slate-500">Days Active</div>
-              </div>
+      {/* Stats Section */}
+      <div className="animate-in fade-in">
+        <h2 className="os-list-label">Activity Stats</h2>
+        <div className="os-list-group p-4 pb-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <button
+              type="button"
+              onClick={() => setShowFriends((prev) => !prev)}
+              aria-expanded={showFriends}
+              aria-controls="friends-section"
+              className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all text-center"
+            >
+              <div className="text-[22px] font-bold text-sky-600 leading-none mb-1">{friends.length}</div>
+              <div className="text-[12px] font-medium text-slate-500">Friends</div>
+            </button>
+            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 bg-slate-50 text-center">
+              <div className="text-[22px] font-bold text-slate-800 leading-none mb-1">5</div>
+              <div className="text-[12px] font-medium text-slate-500">Study Groups</div>
             </div>
-          </CardContent>
-        </Card>
+            <button
+              type="button"
+              onClick={() => setShowClubs((prev) => !prev)}
+              aria-expanded={showClubs}
+              aria-controls="clubs-section"
+              className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all text-center"
+            >
+              <div className="text-[22px] font-bold text-sky-600 leading-none mb-1">{Array.isArray(profileData.interests) ? profileData.interests.length : 0}</div>
+              <div className="text-[12px] font-medium text-slate-500">Interests</div>
+            </button>
+            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 bg-slate-50 text-center">
+              <div className="text-[22px] font-bold text-slate-800 leading-none mb-1">7</div>
+              <div className="text-[12px] font-medium text-slate-500">Days Active</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Friends List */}
       {showFriends && (
-        <Card id="friends-section" className="glass-card border-none animation-fade-in">
-          <CardHeader>
-            <CardTitle className="text-primary">My Friends</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div id="friends-section" className="animate-in slide-in-from-top-4">
+          <h2 className="os-list-label">My Friends ({friends.length})</h2>
+          <div className="os-list-group">
             {friendsLoading ? (
-              <p className="text-muted-foreground text-center py-8">Loading friends...</p>
+              <div className="p-4 text-center text-slate-500 text-[14px]">Loading friends...</div>
             ) : !isFirebaseConfigured || !auth.currentUser ? (
-              <p className="text-muted-foreground text-center py-8">Sign in with a verified VIT email to see your friends.</p>
+              <div className="p-4 text-center text-slate-500 text-[14px]">Sign in with a verified VIT email to see your friends.</div>
             ) : friends.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No friends yet.</p>
-                <Button variant="outline" className="border-white/10 hover:bg-white/5">Find Friends</Button>
+              <div className="p-6 text-center">
+                <p className="text-[14px] text-slate-500 mb-3">No friends yet.</p>
+                <Button size="sm" variant="outline" className="rounded-full text-sky-600 border-sky-200 hover:bg-sky-50">Find Friends</Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {friends.map((friend) => (
-                  <div key={friend.uid} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/30 transition-colors">
-                    <Avatar className="w-12 h-12 border border-white/10">
-                      <AvatarImage src={friend.photoURL || ''} alt={(friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || 'Friend')} />
-                      <AvatarFallback className="bg-primary/20 text-primary">{(friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || '?').charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-foreground truncate">{friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || 'User'}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {[friend.major, friend.year].filter(Boolean).join(' • ') || 'Student'}
-                      </div>
+              friends.map((friend) => (
+                <div key={friend.uid} className="os-list-row gap-3">
+                  <Avatar className="w-10 h-10 ring-1 ring-slate-100">
+                    <AvatarImage src={friend.photoURL || ''} alt={(friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || 'Friend')} />
+                    <AvatarFallback className="bg-slate-100 text-sky-600 text-[14px] font-bold">{(friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || '?').charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline mb-0.5">
+                      <div className="font-semibold text-[15px] text-slate-900 truncate">{friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || 'User'}</div>
                     </div>
-                    {friend.status && (
-                      <Badge variant="outline" className="bg-black/40 border-white/10 ml-2 whitespace-nowrap">
-                        {friend.status === 'available' ? '🟢 Available' :
-                          friend.status === 'in class' ? '📚 Class' :
-                            friend.status === 'in library' ? '📖 Library' :
-                              friend.status === 'in ground' ? '⚽ Ground' :
-                                friend.status === 'in hostel' ? '🏠 Hostel' : '🟢'}
-                      </Badge>
-                    )}
+                    <div className="text-[13px] text-slate-500 truncate">
+                      {[friend.major, friend.year].filter(Boolean).join(' • ') || 'Student'}
+                    </div>
                   </div>
-                ))}
-              </div>
+                  {friend.status && (
+                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap border border-slate-200">
+                      {friend.status === 'available' ? '🟢 Available' :
+                        friend.status === 'in class' ? '📚 Class' :
+                          friend.status === 'in library' ? '📖 Library' :
+                            friend.status === 'in ground' ? '⚽ Ground' :
+                              friend.status === 'in hostel' ? '🏠 Hostel' : '🟢'}
+                    </span>
+                  )}
+                </div>
+              ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Clubs and Chapters List */}
       {showClubs && (
-        <Card id="clubs-section" className="glass-card border-none animation-fade-in">
-          <CardHeader>
-            <CardTitle className="text-primary">My Interests & Clubs</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div id="clubs-section" className="animate-in slide-in-from-top-4">
+          <h2 className="os-list-label">My Interests & Clubs</h2>
+          <div className="os-list-group p-4">
             {Array.isArray(profileData.interests) && profileData.interests.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {profileData.interests.map((club, index) => (
-                  <Badge key={index} variant="secondary" className="px-3 py-1 bg-secondary/10 text-secondary border-secondary/30 hover:bg-secondary/20">
+                  <span key={index} className="px-3 py-1.5 bg-slate-100 text-slate-700 text-[13px] font-medium rounded-full border border-slate-200">
                     {club}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center py-8">No interests added yet.</p>
+              <p className="text-[14px] text-slate-500 text-center">No interests added yet.</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* About Link */}
-      <div className="mt-8 text-center">
+      <div className="mt-8 mb-4 text-center">
         <Button
           type="button"
           variant="ghost"
           onClick={() => goToAbout && goToAbout()}
-          className="text-muted-foreground hover:text-primary hover:bg-white/5 transition-colors"
+          className="text-sky-600 hover:text-sky-700 hover:bg-sky-50 transition-colors font-semibold text-[15px]"
         >
           ℹ️ About UniNest
         </Button>

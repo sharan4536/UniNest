@@ -204,15 +204,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 selection:text-primary-foreground">
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-sky-100 selection:text-sky-900 pb-20 md:pb-0">
       <Navigation
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         onLogout={handleLogout}
         currentUser={currentUser}
       />
-      <main className="pb-24 pt-4 px-4 max-w-7xl mx-auto">
-        {renderPage()}
+      <main className="flex-1 overflow-y-auto relative bg-background">
+        <div className="w-full max-w-4xl mx-auto px-4 py-6 md:py-8 lg:px-8">
+          {renderPage()}
+        </div>
       </main>
     </div>
   );

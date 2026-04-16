@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
@@ -36,47 +36,43 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --ease-soft: cubic-bezier(0.25, 0.8, 0.25, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-app: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-soft: cubic-bezier(0.4, 0.0, 0.2, 1); /* Fallback */
 }
 
 @layer base {
   :root {
-    /* Core Palette - Sky Blue & White Minimal */
-    --background: 210 40% 98%;
-    /* Soft white/blue tint #f8fafc */
-    --foreground: 215 25% 27%;
-    /* Soft dark gray #334155 */
+    /* Core OS Palette - Sky Blue (#38BDF8) & White (#FFFFFF) */
+    --background: 204 45% 97%; /* #F2F8FC Whisper of blue-white */
+    --foreground: 215 25% 20%; /* Darker slate for readability */
 
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
+    --card: 0 0% 100%; /* Pure white */
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
+    --popover-foreground: 215 25% 20%;
 
-    /* Sky Blue Primary */
-    --primary: 199 89% 48%;
-    /* Sky 500 #0ea5e9 */
-    --primary-foreground: 210 40% 98%;
+    /* Sky Blue Primary #38BDF8 */
+    --primary: 198 93% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 20% 96%; /* Neutral pale gray */
+    --secondary-foreground: 215 25% 15%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 210 20% 95%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 199 89% 95%;
-    /* Very light sky blue */
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 198 93% 96%; /* Very light blue accent */
+    --accent-foreground: 198 93% 40%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 199 89% 48%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 198 93% 60%;
 
-    --radius: 1rem;
+    --radius: 0.75rem; /* Slightly tighter, app-like rounding */
   }
 }
 
@@ -90,76 +86,60 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden selection:bg-sky-100 selection:text-sky-900;
-    font-family: 'Outfit', sans-serif;
+    @apply bg-background text-foreground antialiased selection:bg-sky-100 selection:text-sky-900;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px; /* OS-like body size */
+    line-height: 1.4;
+    overflow: hidden; /* Prevent body scrolling; use strict container structures inside */
   }
 }
 
 @layer utilities {
 
-  /* Soft Minimal Utilities */
+  /* App-native Utilities */
   .glass-panel {
-    @apply bg-white/70 backdrop-blur-2xl border border-white/50 shadow-[0_8px_32px_0_rgb(31_38_135_/_0.07)];
+    @apply bg-white/80 backdrop-blur-[20px] border-b border-border shadow-sm;
   }
 
   .glass-card {
-    @apply bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_4px_20px_rgb(0_0_0_/_0.03)] rounded-3xl hover:shadow-[0_8px_30px_rgb(0_0_0_/_0.06)] hover:-translate-y-1 transition-all duration-300 ease-soft;
+    @apply bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-xl border border-slate-100 transition-all duration-200 ease-in-out;
   }
 
   .soft-card {
-    @apply bg-white rounded-3xl shadow-[0_8px_30px_rgb(0_0_0_/_0.04)] border border-slate-50/50 hover:shadow-[0_20px_40px_rgb(0_0_0_/_0.06)] transition-all duration-500 ease-out;
+    @apply bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 transition-all duration-200 ease-in-out;
   }
 
   .soft-button {
-    @apply rounded-full shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-95 transition-all duration-300 ease-spring;
+    @apply rounded-xl shadow-sm active:opacity-80 transition-opacity duration-200;
   }
 
+  /* No colored gradients */
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400;
+    @apply text-foreground font-bold;
   }
 
-  /* Animations */
-  .floating {
-    animation: floating 6s ease-in-out infinite;
+  /* Structural OS Layout Elements */
+  .os-list-row {
+    @apply flex items-center justify-between p-4 bg-white border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors;
   }
 
-  .slide-up-fade {
-    animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  .os-list-group {
+    @apply bg-white rounded-xl border border-gray-200 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)];
   }
 
+  .os-list-label {
+    @apply text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-2;
+  }
+
+  /* Standard Animations */
   .fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-
-  @keyframes floating {
-
-    0%,
-    100% {
-      transform: translateY(0px);
-    }
-
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  @keyframes slideUpFade {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    animation: fadeIn 0.25s ease-out forwards;
   }
 
   @keyframes fadeIn {
     from {
       opacity: 0;
     }
-
     to {
       opacity: 1;
     }

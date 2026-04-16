@@ -615,66 +615,64 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24 md:pb-8">
-      <div className="flex justify-end w-full animate-in fade-in duration-200" style={{ animationDelay: '0.05s' }}>
+    <div className="w-full max-w-2xl mx-auto space-y-6 relative">
+      <div className="flex justify-between items-center px-1 pt-2 animate-in fade-in">
+        <div className="flex flex-col">
+          <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 leading-tight">
+            Hi, {currentUser?.name?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'User'}
+          </h1>
+          <p className="text-[15px] text-slate-500 font-medium">Your Campus Overview</p>
+        </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={toggleGhostMode}
-          className={`rounded-full transition-all duration-300 border ${ghostMode
-            ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+          className={`rounded-full transition-all duration-200 border shadow-sm px-4 h-9 text-[13px] font-semibold ${ghostMode
+            ? 'bg-slate-100 text-slate-600 border-slate-200'
+            : 'bg-white text-slate-600 border-slate-200'}`}
         >
-          {ghostMode ? '👻 Ghost Mode Active' : '👁️ Visible'}
+          {ghostMode ? '👻 Invisible' : '👁️ Visible'}
         </Button>
       </div>
 
-      <div className="text-center mb-8 space-y-2 animate-in fade-in duration-200" style={{ animationDelay: '0.1s' }}>
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gradient">
-          Welcome back, {currentUser?.name?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'User'}!
-        </h1>
-        <p className="text-lg text-slate-500 font-medium">See where your friends are hanging out on campus</p>
-      </div>
-
-      <div className="animate-in fade-in duration-200" style={{ animationDelay: '0.2s' }}>
-        <Card className="glass-card border-none overflow-hidden">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl drop-shadow-md">🗺️</span>
-                <span className="text-2xl font-bold text-foreground">Campus Map</span>
+      <div className="animate-in fade-in">
+        <h2 className="os-list-label">Map & Location</h2>
+        <div className="os-list-group p-4 pb-0 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[20px]">🗺️</span>
+              <span className="text-[17px] font-bold text-slate-800">Campus Map</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCheckinModalOpen(true)}
+                className="rounded-full bg-slate-50 text-sky-600 border-slate-200 hover:bg-sky-50 h-8 px-4 text-[13px] font-semibold flex-shrink-0"
+                disabled={ghostMode}
+              >
+                📍 Check In
+              </Button>
+              <div className="flex items-center bg-slate-50 rounded-full border border-slate-200">
+                <Select value={currentStatus} onValueChange={handleStatusUpdate}>
+                  <SelectTrigger
+                    className="h-8 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-slate-600 font-medium text-[13px] rounded-full"
+                    aria-label="Select your current status"
+                  >
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-200 rounded-xl">
+                    <SelectItem value="available">🟢 Available</SelectItem>
+                    <SelectItem value="in class">📚 In Class</SelectItem>
+                    <SelectItem value="in library">📖 In Library</SelectItem>
+                    <SelectItem value="in ground">⚽ In Ground</SelectItem>
+                    <SelectItem value="in hostel">🏠 In Hostel</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCheckinModalOpen(true)}
-                  className="rounded-full bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50"
-                  disabled={ghostMode}
-                >
-                  📍 Check In
-                </Button>
-                <div className="flex items-center gap-2 bg-slate-50/50 p-1 rounded-full border border-slate-100">
-                  <Select value={currentStatus} onValueChange={handleStatusUpdate}>
-                    <SelectTrigger
-                      className="w-full sm:w-[160px] h-9 border-none bg-transparent hover:bg-white/50 focus:ring-0 shadow-none text-slate-600 font-medium"
-                      aria-label="Select your current status"
-                    >
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="glass-panel border-white/50">
-                      <SelectItem value="available">🟢 Available</SelectItem>
-                      <SelectItem value="in class">📚 In Class</SelectItem>
-                      <SelectItem value="in library">📖 In Library</SelectItem>
-                      <SelectItem value="in ground">⚽ In Ground</SelectItem>
-                      <SelectItem value="in hostel">🏠 In Hostel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
+          </div>
+          <div>
             {isFirebaseConfigured && (
               <div className="mb-4 flex gap-2">
                 {!ghostMode && locationPermission !== 'granted' && (
@@ -703,46 +701,46 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                 )}
               </div>
             )}
-            <div className="rounded-2xl overflow-hidden ring-4 ring-slate-50/50 shadow-inner">
+            <div className="rounded-xl overflow-hidden ring-1 ring-slate-200 shadow-sm mb-4">
               <MapView />
             </div>
             {selectedFriend && (
-              <div className="mt-4 p-4 rounded-2xl bg-sky-50/50 border border-sky-100 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-bottom-2">
-                <div className="flex items-center gap-4">
+              <div className="mb-4 p-3 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Avatar className="w-14 h-14 ring-4 ring-white shadow-md">
-                      <AvatarFallback className="bg-gradient-to-br from-sky-200 to-blue-200 text-sky-700 font-bold text-xl">{(selectedFriend.name || selectedFriend.displayName || 'U').charAt(0)}</AvatarFallback>
+                    <Avatar className="w-10 h-10 ring-2 ring-white">
+                      <AvatarFallback className="bg-sky-200 text-sky-700 font-bold text-sm">{(selectedFriend.name || selectedFriend.displayName || 'U').charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-[3px] border-white shadow-sm"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg text-slate-800">{selectedFriend.name || selectedFriend.displayName}</h3>
-                    <p className="text-sm text-slate-500 font-medium">{selectedFriend.location?.name || 'Unknown Location'}</p>
+                    <h3 className="font-semibold text-[15px] text-slate-800 leading-tight">{selectedFriend.name || selectedFriend.displayName}</h3>
+                    <p className="text-[13px] text-slate-500">{selectedFriend.location?.name || 'Unknown Location'}</p>
                   </div>
                 </div>
-                <Button onClick={() => openFriendProfile(selectedFriend)} className="soft-button bg-white text-sky-600 hover:text-sky-700">
-                  View Profile
+                <Button onClick={() => openFriendProfile(selectedFriend)} size="sm" variant="ghost" className="rounded-full text-sky-600 hover:text-sky-700 text-[13px] font-semibold px-4 border border-sky-200 bg-white">
+                  View
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Connect Social Row: Pulses and Check-ins */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 animate-in fade-in duration-200" style={{ animationDelay: '0.3s' }}>
+        <div className="space-y-6 animate-in fade-in">
           
           {/* Active Pulses */}
-          <Card className="glass-card border-none overflow-hidden h-[300px] flex flex-col">
-            <CardHeader className="py-4 border-b border-white/20 bg-gradient-to-r from-orange-50 to-rose-50">
-              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span className="text-xl">✨</span> Friends' Pulses
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 overflow-y-auto flex-1 space-y-3 scrollbar-thin scrollbar-thumb-gray-200">
+          <div>
+            <h2 className="os-list-label flex justify-between items-center">
+              <span>Friends' Pulses</span>
+              {pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).length > 0 && (
+                <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">{pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).length}</span>
+              )}
+            </h2>
+            <div className="os-list-group">
               {pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 p-4 text-center">
-                  <span className="text-3xl mb-2 grayscale opacity-50">✨</span>
-                  <p>No active pulses right now.</p>
+                <div className="px-4 py-8 text-center text-slate-400">
+                  <p className="text-[15px]">No active pulses right now.</p>
                 </div>
               ) : (
                 pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).map(pulse => {
@@ -751,46 +749,43 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                   if (!isFriend) return null; // Show only friends' pulses for safety
                   
                   return (
-                    <div key={pulse.id} className="p-3 bg-white/70 rounded-2xl border border-white/40 shadow-sm flex items-start gap-3 hover:shadow-md transition-all">
-                      <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
-                        <AvatarFallback className="bg-orange-100 text-orange-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                    <div key={pulse.id} className="os-list-row items-start gap-3">
+                      <Avatar className="w-10 h-10 ring-1 ring-slate-100">
+                        <AvatarFallback className="bg-slate-100 text-sky-600 font-bold text-sm">{friend.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-bold text-sm text-slate-800">{friend.name}</h4>
-                          <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h4 className="font-semibold text-[15px] text-slate-900 truncate pr-2">{friend.name}</h4>
+                          <span className="text-[11px] text-slate-400 whitespace-nowrap">
                             {pulse.location || 'Campus'}
                           </span>
                         </div>
-                        <p className="text-slate-600 text-sm mt-1">{pulse.text}</p>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="mt-2 h-7 text-xs rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
-                          onClick={() => handleDirectMessage(friend)}
-                        >
-                          Join
-                        </Button>
+                        <p className="text-slate-600 text-[14px] leading-snug">{pulse.text}</p>
                       </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="rounded-full bg-slate-100 text-sky-600 hover:bg-slate-200 h-8 px-4 text-[13px] font-semibold"
+                        onClick={() => handleDirectMessage(friend)}
+                      >
+                        Join
+                      </Button>
                     </div>
                   );
                 })
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Who's Around (Check-ins) */}
-          <Card className="glass-card border-none overflow-hidden h-[300px] flex flex-col">
-            <CardHeader className="py-4 border-b border-white/20 bg-gradient-to-r from-indigo-50 to-sky-50">
-              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span className="text-xl">📍</span> Who's Around
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 overflow-y-auto flex-1 space-y-3 scrollbar-thin scrollbar-thumb-gray-200">
+          <div>
+            <h2 className="os-list-label flex justify-between items-center">
+              <span>Who's Around</span>
+            </h2>
+            <div className="os-list-group">
               {checkins.filter(c => !ghostMode && c.createdBy !== auth.currentUser?.uid).length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 p-4 text-center">
-                  <span className="text-3xl mb-2 grayscale opacity-50">📍</span>
-                  <p>No one checked in right now.</p>
+                <div className="px-4 py-8 text-center text-slate-400">
+                  <p className="text-[15px]">No one is checked in right now.</p>
                 </div>
               ) : (
                 checkins.filter(c => !ghostMode && c.createdBy !== auth.currentUser?.uid).map(checkin => {
@@ -807,23 +802,24 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                   }
 
                   return (
-                    <div key={checkin.id} className="p-3 bg-white/70 rounded-2xl border border-white/40 shadow-sm flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
-                        <AvatarFallback className="bg-indigo-100 text-indigo-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                    <div key={checkin.id} className="os-list-row gap-3">
+                      <Avatar className="w-10 h-10 ring-1 ring-slate-100">
+                        <AvatarFallback className="bg-slate-100 text-sky-600 font-bold text-sm">{friend.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-sm text-slate-800">{friend.name}</h4>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
-                          <span className="text-indigo-500">{checkin.location}</span>
-                          <span className="text-slate-300">•</span>
-                          <span>{timeString}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between mb-0.5">
+                          <h4 className="font-semibold text-[15px] text-slate-900 truncate pr-2">{friend.name}</h4>
+                          <span className="text-[12px] text-slate-400 whitespace-nowrap">{timeString}</span>
                         </div>
-                        {checkin.note && <p className="text-xs text-slate-600 mt-1 italic">"{checkin.note}"</p>}
+                        <div className="flex items-center gap-1.5 text-[13px] text-slate-500">
+                          <span className="text-sky-600 font-medium">{checkin.location}</span>
+                        </div>
+                        {checkin.note && <p className="text-[13px] text-slate-500 mt-1">"{checkin.note}"</p>}
                       </div>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="rounded-full w-8 h-8 hover:bg-sky-50 text-sky-500"
+                        className="rounded-full w-8 h-8 hover:bg-slate-100 text-slate-400"
                         onClick={() => handleDirectMessage(friend)}
                       >
                          💬
@@ -832,8 +828,8 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
                   );
                 })
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         <Dialog open={profileDialogOpen} onOpenChange={(open: boolean) => {
@@ -1117,9 +1113,9 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         {!ghostMode && (
           <button 
             onClick={() => setPulseModalOpen(true)}
-            className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-30 rounded-full px-6 h-14 bg-gradient-to-tr from-orange-500 to-rose-500 text-white shadow-xl shadow-orange-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all font-bold border-[3px] border-white text-lg group"
+            className="fixed bottom-[88px] right-4 md:bottom-8 md:right-8 z-30 rounded-full pl-3 pr-4 h-12 bg-sky-500 text-white shadow-[0_4px_14px_rgba(56,189,248,0.4)] flex items-center justify-center hover:bg-sky-600 active:scale-95 transition-all font-semibold text-[15px]"
           >
-            <span className="text-2xl mr-2 group-hover:rotate-12 transition-transform">✨</span> + Pulse
+            <span className="text-xl mr-1.5">✨</span> Pulse
           </button>
         )}
 

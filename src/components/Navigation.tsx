@@ -39,108 +39,110 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
     };
   }, []);
 
-  const totalBadgeCount = unreadMessagesCount;
-  return (
+  const totalBadgeCount = unread  return (
     <>
-      {/* Desktop Navigation - Minimal Floating Header */}
-      <nav className="hidden md:block fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 w-auto max-w-5xl">
-        <div className="glass-panel rounded-full px-6 py-3 flex items-center gap-8 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] transition-shadow duration-300">
-          <div className="flex items-center gap-3 hover:scale-105 transition-transform duration-300 cursor-pointer" onClick={() => setCurrentPage('home')}>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shadow-lg shadow-sky-200/50 text-white">
-              <span className="text-lg">🏫</span>
+      {/* Desktop Navigation - App Native Left Sidebar */}
+      <nav className="hidden md:flex flex-col w-64 h-full bg-white border-r border-slate-100 z-40 p-5 justify-between shrink-0 shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
+        <div>
+          {/* Brand/Logo */}
+          <div className="flex items-center gap-3 mb-10 px-2 select-none cursor-pointer" onClick={() => setCurrentPage('home')}>
+            <div className="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center text-white shadow-sm">
+              <span className="text-sm">🏫</span>
             </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-blue-600 tracking-tight">
+            <span className="text-[17px] font-bold text-slate-800 tracking-tight">
               UniNest
             </span>
           </div>
 
-          <div className="flex items-center gap-1 bg-slate-50/50 p-1.5 rounded-full border border-slate-100 shadow-inner">
+          {/* Navigation Links */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 ms-2">Menu</div>
             {navigationItems.map((item) => (
               <Button
                 key={item.id}
                 variant="ghost"
                 onClick={() => setCurrentPage(item.id)}
-                className={`relative rounded-full px-5 py-2 transition-all duration-300 font-medium text-sm flex items-center gap-2 ${currentPage === item.id
-                  ? 'bg-white text-sky-600 shadow-[0_2px_10px_rgb(0,0,0,0.06)]'
-                  : 'text-slate-500 hover:text-sky-500 hover:bg-white/60'
+                className={`justify-start rounded-xl px-3 py-6 transition-colors duration-200 font-medium text-[15px] flex items-center gap-4 relative overflow-hidden ${currentPage === item.id
+                  ? 'bg-sky-50/80 text-sky-600'
+                  : 'text-slate-600 hover:text-sky-600 hover:bg-slate-50'
                   }`}
               >
-                <span className="text-lg transition-transform duration-300 group-hover:scale-110">{item.icon}</span>
-                <span className="hidden lg:inline font-medium">{item.label}</span>
+                <div className="flex items-center justify-center w-6">
+                  <span className="text-xl">{item.icon}</span>
+                </div>
+                <span>{item.label}</span>
                 {item.id === 'messages' && totalBadgeCount > 0 && (
-                  <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-slate-400 border border-white" />
+                  <span className="absolute right-3 w-5 h-5 rounded-full bg-sky-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {totalBadgeCount}
+                  </span>
                 )}
               </Button>
             ))}
           </div>
+        </div>
 
-          <div className="flex items-center gap-4 pl-4 border-l border-slate-100">
-
-            <div className="flex items-center gap-3 text-right group cursor-pointer" onClick={() => setCurrentPage('profile')}>
-              <div className="hidden lg:block transition-all duration-300 group-hover:translate-x-1">
-                <p className="text-sm font-semibold text-slate-700">{currentUser?.name || currentUser?.displayName}</p>
-              </div>
-              <Avatar className="w-10 h-10 ring-2 ring-white shadow-md group-hover:ring-sky-200 transition-all duration-300 group-hover:scale-105">
-                <AvatarFallback className="bg-gradient-to-br from-sky-100 to-blue-50 text-sky-600 font-bold">
-                  {(currentUser?.name || currentUser?.displayName || 'U')?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+        {/* User Profile Area at Bottom */}
+        <div className="pt-4 border-t border-slate-100">
+          <div 
+            className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer select-none"
+            onClick={() => setCurrentPage('profile')}
+          >
+            <Avatar className="w-10 h-10 ring-1 ring-slate-200">
+              <AvatarFallback className="bg-sky-50 text-sky-600 font-bold text-sm">
+                {(currentUser?.name || currentUser?.displayName || 'U')?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold text-slate-800 truncate">{currentUser?.name || currentUser?.displayName}</p>
+              <p className="text-[12px] text-slate-400 truncate">View Profile</p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLogout}
-              className="text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full px-4 transition-colors"
-            >
-              Logout
-            </Button>
           </div>
+          <Button
+            variant="ghost"
+            onClick={onLogout}
+            className="w-full mt-2 justify-start px-3 py-5 text-[14px] font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+          >
+            <span className="w-6 text-center me-4">↪️</span>
+            Logout
+          </Button>
         </div>
       </nav>
 
-      {/* Mobile Navigation - Soft Floating Dock */}
-      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50">
-        <div className="glass-panel rounded-full p-2 flex justify-between items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/60">
+      {/* Mobile Navigation - Fixed Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-slate-200 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex justify-around items-center px-2 h-[72px]">
           {navigationItems.map((item) => (
-            <Button
+            <button
               key={item.id}
-              variant="ghost"
               onClick={() => setCurrentPage(item.id)}
-              className={`flex flex-col items-center justify-center gap-1 h-12 w-12 rounded-full relative transition-all duration-300 ${currentPage === item.id
-                ? 'bg-sky-50 text-sky-600 -translate-y-4 shadow-lg shadow-sky-100 ring-4 ring-white scale-110'
-                : 'text-slate-400 hover:text-sky-500 hover:bg-sky-50/50'
-                }`}
+              className="flex-1 flex flex-col items-center justify-center h-full relative group space-y-1 active:opacity-60 transition-opacity"
             >
-              <span className="text-xl drop-shadow-sm transition-transform duration-300 active:scale-95">{item.icon}</span>
-              {item.id === 'messages' && totalBadgeCount > 0 && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white" />
-              )}
-            </Button>
+              <div className={`relative flex items-center justify-center w-12 h-8 rounded-full transition-colors duration-200 ${currentPage === item.id ? 'bg-sky-100/80' : 'bg-transparent'}`}>
+                <span className={`text-[22px] transition-transform duration-200 ${currentPage === item.id ? 'scale-110' : 'scale-100 grayscale opacity-70'}`}>
+                  {item.icon}
+                </span>
+                {item.id === 'messages' && totalBadgeCount > 0 && (
+                  <span className="absolute top-0 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-[2px] border-white" />
+                )}
+              </div>
+              <span className={`text-[10px] font-semibold tracking-tight transition-colors duration-200 ${currentPage === item.id ? 'text-sky-600' : 'text-slate-500'}`}>
+                {item.label}
+              </span>
+            </button>
           ))}
         </div>
       </nav>
 
-      {/* Mobile Header - Ultra Minimal */}
-      <div className="md:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-lg px-4 py-3 border-b border-white/50 flex items-center justify-between shadow-sm">
+      {/* Mobile Header - Native iOS Minimal */}
+      <div className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-xl px-4 h-14 border-b border-slate-200 flex items-center justify-between pt-[env(safe-area-inset-top)]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center shadow-md shadow-sky-200/50 text-white">
-            <span className="text-sm">🏫</span>
-          </div>
-          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-blue-600">
+          <span className="text-[20px] font-bold text-slate-800 tracking-tight">
             UniNest
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onLogout}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
-          >
-            <span className="text-lg">↪️</span>
-          </Button>
-          <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm" onClick={() => setCurrentPage('profile')}>
+          <Avatar className="w-8 h-8 rounded-full shadow-sm ring-1 ring-slate-200 active:opacity-70 transition-opacity" onClick={() => setCurrentPage('profile')}>
             <AvatarFallback className="bg-sky-50 text-sky-600 text-xs font-bold">
               {(currentUser?.name || currentUser?.displayName || 'U')?.charAt(0)}
             </AvatarFallback>
