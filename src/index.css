@@ -204,4 +204,11 @@
   .campus-pulse-shell {
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
+
+@keyframes campusMePulse {
+  0% { transform: scale(0.85); opacity: 0.75; }
+  70% { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
 }

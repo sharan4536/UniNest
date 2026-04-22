@@ -55,6 +55,7 @@ export default function App() {
                 year: userProfile?.year || (profileDoc as any)?.year,
                 major: userProfile?.major || (profileDoc as any)?.major,
                 location: userProfile?.location,
+                photoURL: (profileDoc as any)?.photoURL || (userProfile as any)?.photoURL || user.photoURL || undefined,
                 isDevelopmentUser: false
               });
               setIsLoggedIn(true);
@@ -74,6 +75,7 @@ export default function App() {
                 uid: user.uid,
                 name: fallbackName,
                 email: user.email,
+                photoURL: (profileAfterCreate as any)?.photoURL || user.photoURL || undefined,
                 isDevelopmentUser: false
               });
               setIsLoggedIn(true);

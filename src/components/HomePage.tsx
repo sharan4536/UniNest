@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { CircleMarker, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import { Coffee, LibraryBig, LocateFixed, Plus, Radio, SmilePlus, Sparkles, Users } from 'lucide-react';
 import { auth, isFirebaseConfigured } from '../utils/firebase/client';
 import {
@@ -25,6 +25,7 @@ type HomePageProps = {
   currentUser?: {
     name?: string;
     displayName?: string;
+    photoURL?: string;
     location?: { name?: string } | null;
   };
   onOpenProfile?: (user: any) => void;
@@ -98,6 +99,9 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
     currentUser?.name?.split(' ')[0] ||
     currentUser?.displayName?.split(' ')[0] ||
     'You';
+
+  const myPhoto = currentUser?.photoURL || (auth.currentUser as any)?.photoURL || undefined;
+  const myInitial = (firstName.charAt(0) || 'U').toUpperCase();
 
   useEffect(() => {
     const loadMap = async () => {
@@ -235,16 +239,19 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapViewport center={mapCenter} markers={markerData} />
-          <CircleMarker
-            center={[mapCenter.lat, mapCenter.lng]}
-            radius={10}
-            pathOptions={{
-              color: '#ffffff',
-              weight: 3,
-              fillColor: '#0ea5e9',
-              fillOpacity: 1,
-            }}
-          />
+          {myPhoto ? (
+            <Marker
+              position={[mapCenter.lat, mapCenter.lng]}
+              icon={createMyAvatarIcon(myPhoto)}
+              eventHandlers={{ click: () => onNavigate?.('profile') }}
+            />
+          ) : (
+            <Marker
+              position={[mapCenter.lat, mapCenter.lng]}
+              icon={createMyInitialIcon(myInitial)}
+              eventHandlers={{ click: () => onNavigate?.('profile') }}
+            />
+          )}
           {markerData.map((friend) => (
             <Marker
               key={friend.id}
@@ -279,7 +286,11 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
             className="flex items-center gap-3 rounded-full border border-white/60 bg-white/72 px-2 py-2 shadow-[0_18px_45px_rgba(41,48,51,0.12)] backdrop-blur-xl transition hover:scale-[0.99]"
           >
             <span className="campus-live-ring flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-sky-500 to-cyan-300 text-sm font-bold text-white">
-              {firstName.charAt(0)}
+              {myPhoto ? (
+                <img src={myPhoto} alt={firstName} className="h-full w-full object-cover" />
+              ) : (
+                <>{firstName.charAt(0)}</>
+              )}
             </span>
             <span className="hidden pr-3 text-left sm:block">
               <span className="block text-xs font-semibold uppercase tracking-[0.24em] text-sky-600/80">
@@ -526,5 +537,40 @@ function createCheckinIcon(location: string) {
     `,
     iconSize: [120, 28],
     iconAnchor: [60, 14],
+  });
+}
+
+function createMyAvatarIcon(image: string) {
+  // Current user's location marker — their photo with a bright sky ring + pulse halo
+  const safeUrl = image.replace(/"/g, '&quot;');
+  return L.divIcon({
+    className: 'campus-me-marker',
+    html: `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-10px);">
+        <div style="position:absolute;inset:-6px;border-radius:9999px;background:rgba(56,189,248,0.35);animation:campusMePulse 2s ease-out infinite;"></div>
+        <div style="position:relative;width:52px;height:52px;border-radius:9999px;overflow:hidden;border:3px solid white;box-shadow:0 0 0 3px #0ea5e9,0 18px 40px rgba(0,84,127,0.22);background:white;">
+          <img src="${safeUrl}" alt="" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+      </div>
+    `,
+    iconSize: [52, 52],
+    iconAnchor: [26, 26],
+  });
+}
+
+function createMyInitialIcon(initial: string) {
+  // Fallback when user has no photo uploaded yet
+  return L.divIcon({
+    className: 'campus-me-marker',
+    html: `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-10px);">
+        <div style="position:absolute;inset:-6px;border-radius:9999px;background:rgba(56,189,248,0.35);animation:campusMePulse 2s ease-out infinite;"></div>
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:9999px;border:3px solid white;box-shadow:0 0 0 3px #0ea5e9,0 18px 40px rgba(0,84,127,0.22);background:linear-gradient(135deg,#0ea5e9,#7dd3fc);color:white;font-weight:800;font-size:18px;font-family:'Plus Jakarta Sans',sans-serif;">
+          ${initial}
+        </div>
+      </div>
+    `,
+    iconSize: [52, 52],
+    iconAnchor: [26, 26],
   });
 }
