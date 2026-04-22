@@ -186,7 +186,7 @@ export default function App() {
           />
         );
       case 'profile':
-        return <ProfilePage currentUser={currentUser as any} onProfileUpdate={handleProfileUpdate} goToAbout={() => setCurrentPage('about')} />;
+        return <ProfilePage currentUser={currentUser as any} onProfileUpdate={handleProfileUpdate} goToAbout={() => setCurrentPage('about')} onLogout={handleLogout} />;
       case 'about':
         return <AboutPage />;
       case 'discover':

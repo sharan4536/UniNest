@@ -5,12 +5,12 @@ import {
   Clock3,
   Edit3,
   Globe2,
+  Info,
+  LogOut,
   Lock,
   MapPin,
-  MessageCircle,
   Save,
   Sparkles,
-  UserPlus,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -63,10 +63,12 @@ export function ProfilePage({
   currentUser,
   onProfileUpdate,
   goToAbout,
+  onLogout,
 }: {
   currentUser?: CurrentUser;
   onProfileUpdate?: (updatedUser: CurrentUser) => void;
   goToAbout?: () => void;
+  onLogout?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('schedule');
@@ -566,25 +568,16 @@ export function ProfilePage({
               </span>
             </div>
 
-            <div className="mt-5 flex w-full max-w-xs gap-2.5">
+            <div className="mt-5 w-full max-w-xs">
               <Button
                 type="button"
                 onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
                 disabled={saving}
-                className="h-11 flex-1 rounded-2xl bg-sky-400 text-sm font-bold text-white shadow-[0_10px_15px_-3px_rgba(56,189,248,0.3),0_4px_6px_-4px_rgba(56,189,248,0.3)] hover:bg-sky-500"
+                className="h-11 w-full rounded-2xl bg-sky-400 text-sm font-bold text-white shadow-[0_10px_15px_-3px_rgba(56,189,248,0.3),0_4px_6px_-4px_rgba(56,189,248,0.3)] hover:bg-sky-500"
                 data-testid="profile-edit-save-btn"
               >
                 {isEditing ? <Save className="mr-2 h-4 w-4" /> : <Edit3 className="mr-2 h-4 w-4" />}
                 {saving ? 'Saving...' : isEditing ? 'Save Profile' : 'Edit Profile'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={goToAbout}
-                className="h-11 w-11 rounded-2xl bg-white text-sky-600 ring-1 ring-sky-400/10 hover:bg-sky-50"
-                data-testid="profile-about-btn"
-              >
-                {isEditing ? <MessageCircle className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
               </Button>
             </div>
 
@@ -840,6 +833,50 @@ export function ProfilePage({
               </Button>
             </section>
           )}
+          {/* Account actions — About + Logout */}
+          <section className="mt-6 rounded-[1.5rem] bg-white/60 ring-1 ring-sky-400/10 overflow-hidden">
+            <button
+              type="button"
+              onClick={goToAbout}
+              data-testid="profile-about-row"
+              className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-sky-50/60 transition"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-400/10 text-sky-500 ring-1 ring-sky-400/20">
+                  <Info className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-slate-800" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    About UniNest
+                  </p>
+                  <p className="text-xs text-slate-500">Learn more about the platform.</p>
+                </div>
+              </div>
+              <span className="text-slate-400 text-lg">›</span>
+            </button>
+            <div className="h-px bg-sky-400/10 mx-4" />
+            <button
+              type="button"
+              onClick={() => {
+                if (onLogout) onLogout();
+              }}
+              data-testid="profile-logout-row"
+              className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-rose-50/60 transition"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20">
+                  <LogOut className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-rose-600" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Log out
+                  </p>
+                  <p className="text-xs text-slate-500">Sign out of your account.</p>
+                </div>
+              </div>
+              <span className="text-slate-400 text-lg">›</span>
+            </button>
+          </section>
         </div>
       </section>
 
