@@ -17,13 +17,21 @@ export function StudySosSheet({ open, onOpenChange, userTimetable }: StudySosShe
   const [topic, setTopic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Derive unique courses from timetable. Each option: { code, title }
+  // ClassItem has `course` (e.g. "CSE2001") and `title` (e.g. "Data Structures").
   const courses = Array.from(
-    new Set(
+    new Map(
       Object.values(userTimetable)
         .flat()
-        .map((item) => item.courseCode)
-    )
-  ).sort();
+        .filter((item) => item && (item.course || item.title))
+        .map((item) => {
+          const code = (item.course || '').trim();
+          const title = (item.title || '').trim();
+          const key = code || title;
+          return [key, { code, title }] as const;
+        })
+    ).values()
+  ).sort((a, b) => (a.code || a.title).localeCompare(b.code || b.title));
 
   const handleCreateSOS = async () => {
     if (!selectedCourse || !topic.trim()) {
@@ -60,23 +68,30 @@ export function StudySosSheet({ open, onOpenChange, userTimetable }: StudySosShe
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-2">Course</label>
               <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                <SelectTrigger className="rounded-lg border-gray-200">
-                  <SelectValue placeholder="Select a course..." />
+                <SelectTrigger data-testid="sos-course-select" className="rounded-lg border-gray-200">
+                  <SelectValue placeholder="Select a course from your timetable..." />
                 </SelectTrigger>
                 <SelectContent>
                   {courses.length > 0 ? (
-                    courses.map((course) => (
-                      <SelectItem key={course} value={course}>
-                        {course}
-                      </SelectItem>
-                    ))
+                    courses.map(({ code, title }) => {
+                      const value = code || title;
+                      const label = code && title ? `${code} — ${title}` : (code || title);
+                      return (
+                        <SelectItem key={value} value={value} data-testid={`sos-course-option-${value}`}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })
                   ) : (
                     <SelectItem value="none" disabled>
-                      No courses in timetable
+                      No courses in timetable yet
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
+              {courses.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">Add classes to your timetable to select a course here.</p>
+              )}
             </div>
 
             {/* Topic Input */}

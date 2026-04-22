@@ -415,23 +415,18 @@ export function ProfilePage({
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-surface text-on-surface">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.35),_transparent_34%),linear-gradient(180deg,_#f2f8fc_0%,_#e8f0f5_100%)]" />
+    <div className="relative min-h-screen overflow-x-hidden bg-surface text-on-surface">
+      {/* Ambient background gradient (non-interactive) */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.35),_transparent_34%),linear-gradient(180deg,_#f2f8fc_0%,_#e8f0f5_100%)]" />
 
-      <main className="pointer-events-none h-screen w-full space-y-6 p-6 opacity-40 blur-sm">
-        <div className="h-64 w-full rounded-[2rem] bg-surface-container-low" />
-        <div className="h-40 w-full rounded-[2rem] bg-surface-container-low" />
-        <div className="h-40 w-full rounded-[2rem] bg-surface-container-low" />
-      </main>
-
-      <div className="fixed inset-0 z-10 bg-slate-900/15 backdrop-blur-[4px]" />
-
-      <header className="fixed top-0 z-20 flex w-full items-center justify-between border-b border-slate-200/50 bg-white/80 px-6 py-4 backdrop-blur-xl">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-slate-200/50 bg-white/80 px-5 py-3 backdrop-blur-xl">
         <button
           type="button"
           onClick={() => setIsEditing((prev) => !prev)}
-          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-surface-container ring-2 ring-primary/20"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-surface-container ring-2 ring-primary/20"
           aria-label="Edit profile"
+          data-testid="profile-header-avatar-btn"
         >
           {profileData.photoURL ? (
             <img src={profileData.photoURL} alt={displayName} className="h-full w-full object-cover" />
@@ -440,7 +435,7 @@ export function ProfilePage({
           )}
         </button>
 
-        <div className="text-xl font-extrabold tracking-tight text-primary" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <div className="text-lg font-extrabold tracking-tight text-primary" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           UniNest
         </div>
 
@@ -449,33 +444,32 @@ export function ProfilePage({
           onClick={() => setShowPrivacySettings(true)}
           className="rounded-full p-2 transition-colors hover:bg-primary/10"
           aria-label="Privacy settings"
+          data-testid="profile-privacy-btn"
         >
           <Lock className="h-5 w-5 text-primary" />
         </button>
       </header>
 
-      <section className="fixed bottom-16 left-0 right-0 z-20 max-h-[calc(82vh-1rem)] overflow-y-auto rounded-t-[2.5rem] bg-white/85 pb-28 shadow-[0_-12px_40px_rgba(56,189,248,0.12)] backdrop-blur-[24px] md:bottom-0 md:max-h-[82vh] md:pb-24">
-        <div className="flex justify-center pb-6 pt-3">
-          <div className="h-1.5 w-12 rounded-full bg-slate-300/70" />
-        </div>
-
-        <div className="px-6 pb-12 sm:px-8">
+      {/* Main content - normal flow, fills viewport, scrolls naturally */}
+      <section className="mx-auto w-full max-w-2xl px-4 pb-16 pt-6 sm:px-6 sm:pt-8">
+        <div className="rounded-[2rem] bg-white/85 px-5 py-6 shadow-[0_10px_40px_rgba(56,189,248,0.08)] ring-1 ring-slate-200/40 backdrop-blur-[12px] sm:px-7 sm:py-8">
           <header className="flex flex-col items-center text-center">
             <div className="group relative">
               <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-primary to-primary-container opacity-25 blur-sm transition-opacity group-hover:opacity-40" />
-              <Avatar className="relative h-28 w-28 border-4 border-white shadow-xl">
+              <Avatar className="relative h-24 w-24 border-4 border-white shadow-xl">
                 <AvatarImage src={profileData.photoURL} alt={displayName} className="object-cover" />
-                <AvatarFallback className="bg-sky-100 text-3xl font-bold text-sky-700">
+                <AvatarFallback className="bg-sky-100 text-2xl font-bold text-sky-700">
                   {displayName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <button
                 type="button"
                 onClick={handlePickPhoto}
-                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg transition-transform active:scale-95"
+                className="absolute bottom-0.5 right-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg transition-transform active:scale-95"
                 aria-label="Upload photo"
+                data-testid="profile-upload-photo-btn"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-3.5 w-3.5" />
               </button>
             </div>
 
@@ -487,26 +481,27 @@ export function ProfilePage({
               onChange={handlePhotoSelected}
             />
 
-            <div className="mt-4">
-              <h1 className="text-3xl font-extrabold tracking-tight text-on-surface" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <div className="mt-3">
+              <h1 className="text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {displayName}
               </h1>
-              <p className="mt-1 font-medium text-on-surface-variant">{displaySubtitle}</p>
+              <p className="mt-1 text-sm font-medium text-on-surface-variant">{displaySubtitle}</p>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
               <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-700">{friendCount} friends</span>
               <span className="rounded-full bg-white/80 px-3 py-1 text-slate-600 ring-1 ring-slate-200">
                 {friendsLoading ? 'Syncing network...' : profileData.location || 'On campus'}
               </span>
             </div>
 
-            <div className="mt-6 flex w-full max-w-sm gap-3">
+            <div className="mt-5 flex w-full max-w-xs gap-2.5">
               <Button
                 type="button"
                 onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
                 disabled={saving}
-                className="h-14 flex-1 rounded-2xl bg-gradient-to-br from-primary to-sky-500 font-bold text-white shadow-lg shadow-primary/30"
+                className="h-11 flex-1 rounded-2xl bg-gradient-to-br from-primary to-sky-500 text-sm font-bold text-white shadow-lg shadow-primary/30"
+                data-testid="profile-edit-save-btn"
               >
                 {isEditing ? <Save className="mr-2 h-4 w-4" /> : <Edit3 className="mr-2 h-4 w-4" />}
                 {saving ? 'Saving...' : isEditing ? 'Save Profile' : 'Edit Profile'}
@@ -515,38 +510,40 @@ export function ProfilePage({
                 type="button"
                 variant="secondary"
                 onClick={goToAbout}
-                className="h-14 w-14 rounded-2xl bg-surface-container-high text-on-surface-variant"
+                className="h-11 w-11 rounded-2xl bg-surface-container-high text-on-surface-variant"
+                data-testid="profile-about-btn"
               >
-                {isEditing ? <MessageCircle className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                {isEditing ? <MessageCircle className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
               </Button>
             </div>
 
             {(photoUploading || photoError) && (
-              <div className="mt-3 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-slate-500">
                 {photoUploading ? 'Uploading photo...' : photoError}
               </div>
             )}
           </header>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid gap-2.5 sm:grid-cols-3">
             <InfoChip icon={Globe2} label="Campus" value={profileData.university || 'UniNest'} />
             <InfoChip icon={MapPin} label="Spot" value={profileData.location || 'Campus Library'} />
             <InfoChip icon={Sparkles} label="Status" value={currentStatus} />
           </div>
 
-          <nav className="mt-8">
-            <div className="flex items-center justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-low/80 p-1.5">
+          <nav className="mt-6">
+            <div className="flex items-center justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-low/80 p-1">
               {tabLabels.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold transition-colors ${
+                  className={`flex-1 rounded-xl px-2 py-2 text-sm font-semibold transition-colors ${
                     activeTab === tab.id
                       ? 'bg-gradient-to-br from-primary to-sky-400 text-white shadow-md'
                       : 'text-on-surface-variant hover:bg-surface-container/50'
                   }`}
                   style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  data-testid={`profile-tab-${tab.id}`}
                 >
                   {tab.label}
                 </button>
@@ -554,35 +551,35 @@ export function ProfilePage({
             </div>
           </nav>
 
-          <section className="mt-8">
+          <section className="mt-6">
             {activeTab === 'schedule' && (
-              <div className="space-y-8">
+              <div className="space-y-5">
                 {timetableLoading ? (
                   <p className="text-sm text-slate-500">Loading your timetable...</p>
                 ) : scheduleItems.length === 0 ? (
-                  <div className="rounded-[1.5rem] border border-slate-200/70 bg-white/70 p-5 text-center">
-                    <p className="font-semibold text-slate-800">No timetable in database yet</p>
-                    <p className="mt-1 text-sm text-slate-500">Upload or create your timetable to see it here.</p>
+                  <div className="rounded-[1.25rem] border border-slate-200/70 bg-white/70 p-4 text-center">
+                    <p className="text-sm font-semibold text-slate-800">No timetable in database yet</p>
+                    <p className="mt-1 text-xs text-slate-500">Upload or create your timetable to see it here.</p>
                   </div>
                 ) : (
                   scheduleItems.map((item, index) => (
-                    <div key={item.key} className="relative flex gap-6">
+                    <div key={item.key} className="relative flex gap-4">
                       {index < scheduleItems.length - 1 && (
-                        <div className="absolute bottom-[-32px] left-[11px] top-8 w-[2px] bg-surface-container-highest" />
+                        <div className="absolute bottom-[-20px] left-[9px] top-6 w-[2px] bg-surface-container-highest" />
                       )}
-                      <div className="z-10 mt-1 h-6 w-6 rounded-full border-4 border-white bg-primary shadow-sm" />
-                      <div className="flex-1 pb-4">
+                      <div className="z-10 mt-1 h-5 w-5 rounded-full border-[3px] border-white bg-primary shadow-sm" />
+                      <div className="flex-1 pb-2">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <h3 className="text-lg font-bold text-on-surface" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                            <h3 className="text-base font-bold text-on-surface" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                               {item.title}
                             </h3>
-                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-sky-700">{item.day}</p>
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700">{item.day}</p>
                           </div>
                         </div>
-                        <p className="mt-1 text-sm text-on-surface-variant">{item.place}</p>
-                        <div className="mt-2 flex items-center gap-2 text-on-surface-variant">
-                          <Clock3 className="h-4 w-4" />
+                        <p className="mt-0.5 text-sm text-on-surface-variant">{item.place}</p>
+                        <div className="mt-1 flex items-center gap-1.5 text-on-surface-variant">
+                          <Clock3 className="h-3.5 w-3.5" />
                           <span className="text-xs font-medium">{item.time}</span>
                         </div>
                       </div>
@@ -593,15 +590,15 @@ export function ProfilePage({
             )}
 
             {activeTab === 'interests' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <p className="text-sm leading-relaxed text-slate-600">
                   {profileData.bio || 'Add a short intro so people instantly get your vibe.'}
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                   {profileData.interests.map((interest, index) => (
                     <span
                       key={`${interest}-${index}`}
-                      className="rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700"
+                      className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700"
                     >
                       {interest}
                     </span>
@@ -611,11 +608,11 @@ export function ProfilePage({
             )}
 
             {activeTab === 'clubs' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {clubList.map((club, index) => (
-                  <div key={`${club}-${index}`} className="rounded-[1.5rem] border border-slate-200/70 bg-white/70 p-4">
-                    <p className="font-semibold text-slate-800">{club}</p>
-                    <p className="mt-1 text-sm text-slate-500">
+                  <div key={`${club}-${index}`} className="rounded-[1.25rem] border border-slate-200/70 bg-white/70 p-3.5">
+                    <p className="text-sm font-semibold text-slate-800">{club}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
                       A social circle built around {profileData.interests[index]?.toLowerCase() || 'campus life'}.
                     </p>
                   </div>
@@ -624,19 +621,19 @@ export function ProfilePage({
             )}
           </section>
 
-          <section className="mt-8 space-y-4 rounded-[1.75rem] border border-slate-200/70 bg-white/60 p-5">
+          <section className="mt-6 space-y-3 rounded-[1.5rem] border border-slate-200/70 bg-white/60 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   Visibility
                 </h2>
-                <p className="text-sm text-slate-500">Quick privacy controls for your campus presence.</p>
+                <p className="text-xs text-slate-500">Quick privacy controls for your campus presence.</p>
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setShowPrivacySettings(true)}
-                className="rounded-full text-sky-600"
+                className="h-8 rounded-full px-3 text-xs text-sky-600"
               >
                 More
               </Button>
@@ -663,15 +660,15 @@ export function ProfilePage({
           </section>
 
           {isEditing && (
-            <section className="mt-8 space-y-6 rounded-[1.75rem] border border-slate-200/70 bg-white/70 p-5">
+            <section className="mt-6 space-y-5 rounded-[1.5rem] border border-slate-200/70 bg-white/70 p-4 sm:p-5">
               <div>
-                <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   Edit Details
                 </h2>
-                <p className="text-sm text-slate-500">Tune your identity card without leaving the profile view.</p>
+                <p className="text-xs text-slate-500">Tune your identity card without leaving the profile view.</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Name">
                   <Input value={profileData.name} onChange={(e) => handleInputChange('name', e.target.value)} />
                 </Field>
@@ -702,13 +699,13 @@ export function ProfilePage({
                 <textarea
                   value={profileData.bio}
                   onChange={(e) => handleInputChange('bio', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-300"
+                  rows={3}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-300"
                   placeholder="Write something warm, specific, and useful."
                 />
               </Field>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold text-slate-700">Interests</Label>
                   <button type="button" onClick={handleAddInterest} className="text-sm font-semibold text-sky-600">
@@ -716,12 +713,12 @@ export function ProfilePage({
                   </button>
                 </div>
                 {profileData.interests.map((interest, index) => (
-                  <div key={index} className="flex items-center gap-3">
+                  <div key={index} className="flex items-center gap-2.5">
                     <Input value={interest} onChange={(e) => handleInterestChange(index, e.target.value)} />
                     <button
                       type="button"
                       onClick={() => handleRemoveInterest(index)}
-                      className="rounded-full px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                      className="rounded-full px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
                     >
                       Remove
                     </button>
@@ -733,7 +730,8 @@ export function ProfilePage({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="h-12 w-full rounded-2xl bg-sky-500 text-white hover:bg-sky-600"
+                className="h-11 w-full rounded-2xl bg-sky-500 text-sm font-bold text-white hover:bg-sky-600"
+                data-testid="profile-save-details-btn"
               >
                 {saving ? 'Saving...' : 'Save Profile Settings'}
               </Button>
