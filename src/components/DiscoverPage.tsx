@@ -632,44 +632,58 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
   const isAuthorized = true; // Use real auth checks if needed
 
   return (
-    <div className="bg-slate-50 font-sans text-slate-800 min-h-screen pb-32">
+    <div className="relative bg-sky-50 font-sans text-slate-800 min-h-screen pb-32 overflow-hidden" style={{fontFamily: "'Inter', sans-serif"}}>
+      {/* Ambient background blurs */}
+      <div aria-hidden className="pointer-events-none absolute -top-64 left-[234px] w-48 h-48 bg-sky-400/10 rounded-full blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute top-[2400px] -left-10 w-48 h-48 bg-violet-500/5 rounded-full blur-3xl" />
+
       {/* Top Navigation Anchor */}
-      <header className="sticky top-0 w-full z-50 bg-slate-50/80 backdrop-blur-xl flex items-center justify-between px-6 py-4">
+      <header className="sticky top-0 w-full z-50 bg-white/60 border-b border-sky-400/10 backdrop-blur-md flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm">
+          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-sky-400/20">
             <Avatar className="w-full h-full">
-               <AvatarFallback className="bg-sky-100 text-sky-700">{auth.currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+               <AvatarFallback className="bg-sky-100 text-sky-700 font-bold">{auth.currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
             </Avatar>
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-indigo-600 font-sans" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>Discover</h1>
+          <h1 className="text-xl font-bold tracking-tight text-sky-400" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>Discover</h1>
         </div>
-        <button className="text-slate-500 hover:bg-slate-200/50 p-2 rounded-full transition-colors duration-300">
-          <Search className="w-6 h-6" />
+        <button data-testid="discover-filter-btn" className="text-slate-600 hover:bg-sky-100/60 p-2 rounded-full transition-colors duration-300">
+          <SlidersHorizontal className="w-5 h-5" />
         </button>
       </header>
 
-      <main className="pb-8">
+      <main className="relative pb-8">
         {/* Search & Filters */}
         <section className="px-6 py-4 space-y-4">
-          <div className="relative flex items-center bg-slate-100 rounded-2xl p-4 group focus-within:bg-slate-200 transition-colors duration-300">
-            <Search className="w-5 h-5 text-slate-400 mr-3" />
-            <input 
-              className="bg-transparent border-none focus:ring-0 w-full text-slate-600 placeholder:text-slate-400" 
-              placeholder="Search people, interests, courses..." 
+          <div className="relative flex items-center bg-white/80 rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] ring-1 ring-sky-400/5 backdrop-blur-sm focus-within:ring-sky-400/30 transition-all duration-300">
+            <Search className="w-4 h-4 text-slate-400 mr-3" />
+            <input
+              data-testid="discover-search-input"
+              className="bg-transparent border-none focus:outline-none focus:ring-0 w-full text-slate-700 placeholder:text-slate-400 text-base"
+              placeholder="Search people, interests, courses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              type="text" 
+              type="text"
             />
           </div>
-          <div className="flex overflow-x-auto no-scrollbar gap-2 py-2">
-            {['name', 'major', 'online', 'sharedCourses', 'mutualClubs'].map(sort => {
-                const label = sort === 'sharedCourses' ? 'Courses' : sort === 'mutualClubs' ? 'Clubs' : sort.charAt(0).toUpperCase() + sort.slice(1);
-                const isActive = sortBy === sort;
+          <div className="flex overflow-x-auto no-scrollbar gap-2 py-1">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'name', label: 'Name' },
+              { key: 'major', label: 'Major' },
+              { key: 'online', label: 'Online' },
+              { key: 'sharedCourses', label: 'Courses' },
+              { key: 'mutualClubs', label: 'Clubs' },
+            ].map(({ key, label }) => {
+                const isActive = (key === 'all' && sortBy === 'name') ? false : sortBy === key;
+                const isAllActive = key === 'all' && (sortBy === 'name' || !sortBy);
+                const active = isActive || isAllActive;
                 return (
-                    <button 
-                        key={sort}
-                        onClick={() => setSortBy(sort)}
-                        className={`px-5 py-2.5 rounded-full text-sm font-semibold tracking-wide whitespace-nowrap shadow-sm transition-transform active:scale-95 ${isActive ? 'bg-indigo-600 text-white shadow-indigo-600/20' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                    <button
+                        key={key}
+                        data-testid={`discover-filter-${key}`}
+                        onClick={() => setSortBy(key === 'all' ? 'name' : key)}
+                        className={`px-5 py-2.5 rounded-full text-sm font-semibold tracking-tight whitespace-nowrap transition-all active:scale-95 ${active ? 'bg-sky-400 text-white shadow-[0_10px_15px_-3px_rgba(56,189,248,0.25),0_4px_6px_-4px_rgba(56,189,248,0.25)]' : 'bg-white text-slate-600 ring-1 ring-sky-400/10 hover:ring-sky-400/30'}`}
                     >
                         {label}
                     </button>
@@ -682,36 +696,49 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
         {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).length > 0 && (
           <section className="mt-4">
             <div className="px-6 mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>
-                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-800 flex items-center gap-2" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                   Needs Help Right Now
               </h2>
-              <span className="text-xs font-bold text-indigo-600 tracking-widest uppercase">Live</span>
+              <span className="text-xs font-bold text-sky-400 tracking-widest uppercase">Live</span>
             </div>
             <div className="flex overflow-x-auto no-scrollbar gap-4 px-6 pb-6">
-              {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).map(sos => {
+              {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).map((sos, idx) => {
                 const friend = friendsUsers.find(f => f.id === sos.createdBy);
                 if (!friend) return null;
+                const accents = [
+                  { ring: 'ring-red-500/10', dotText: 'text-red-500', blur: 'bg-red-500/10', btn: 'bg-red-500 shadow-[0_10px_15px_-3px_rgba(239,68,68,0.2),0_4px_6px_-4px_rgba(239,68,68,0.2)]' },
+                  { ring: 'ring-violet-500/10', dotText: 'text-violet-500', blur: 'bg-violet-500/10', btn: 'bg-violet-500 shadow-[0_10px_15px_-3px_rgba(139,92,246,0.2),0_4px_6px_-4px_rgba(139,92,246,0.2)]' },
+                ];
+                const a = accents[idx % accents.length];
+                const minsAgo = (() => {
+                  try {
+                    const d = (sos as any).createdAt?.toDate ? (sos as any).createdAt.toDate() : new Date();
+                    const diff = Math.max(1, Math.round((Date.now() - d.getTime()) / 60000));
+                    return diff < 60 ? `${diff} MINS AGO` : `${Math.round(diff / 60)} HRS AGO`;
+                  } catch { return 'JUST NOW'; }
+                })();
                 return (
-                  <div key={sos.id} className="min-w-[280px] bg-rose-50/50 p-5 rounded-[2rem] border border-rose-500/10 relative overflow-hidden group">
-                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
-                    <div className="flex items-center gap-3 mb-4">
+                  <div key={sos.id} data-testid={`sos-card-${sos.id}`} className={`min-w-[280px] bg-white/60 p-5 rounded-[32px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] ring-1 ${a.ring} backdrop-blur-[6px] relative overflow-hidden group`}>
+                    <div className={`absolute -right-4 -top-4 w-24 h-24 ${a.blur} rounded-full blur-2xl`}></div>
+                    <div className="flex items-center gap-3 mb-4 relative">
                       <Avatar className="w-10 h-10 border-2 border-white">
-                        <AvatarFallback className="bg-rose-100 text-rose-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="bg-slate-100 text-slate-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-bold text-sm">{friend.name}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-rose-600 font-bold">{sos.course || 'Urgent'}</p>
+                        <p className="font-bold text-sm text-slate-800 leading-5">{friend.name}</p>
+                        <p className={`text-[10px] uppercase tracking-wide font-bold ${a.dotText} leading-4`}>{minsAgo}</p>
                       </div>
                     </div>
-                    <p className="text-sm font-medium mb-6 text-slate-800 leading-relaxed">{sos.topic}</p>
-                    <button 
+                    <p className="text-sm font-medium mb-6 text-slate-800 leading-6 relative">{sos.topic}</p>
+                    <button
+                      data-testid={`sos-offer-help-${sos.id}`}
                       onClick={() => {
                         createConversation(friend.id).then(() => {
                            if (onMessage) onMessage();
                         });
                       }}
-                      className="w-full py-3 bg-rose-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-rose-600/20 active:scale-[0.98] transition-transform"
+                      className={`w-full py-3 ${a.btn} text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-transform`}
                     >
                       Offer Help
                     </button>
@@ -723,26 +750,27 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
         )}
 
         {/* Nearby Now */}
-        <section className="py-4 bg-slate-100/50 mt-4">
+        <section className="py-4 bg-sky-400/5 mt-4">
           <div className="px-6 mb-4">
-            <h2 className="text-lg font-extrabold tracking-tight" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>Nearby Now</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-800" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>Nearby Now</h2>
           </div>
           <div className="flex overflow-x-auto no-scrollbar gap-6 px-6">
             {checkins.length > 0 ? (
-              checkins.map(ci => {
+              checkins.map((ci, idx) => {
                 const friend = friendsUsers.find(f => f.id === ci.createdBy);
                 if (!friend) return null;
+                const ringCls = idx < 2 ? 'ring-sky-400' : 'ring-sky-400/20';
                 return (
-                  <div key={ci.id} onClick={() => openPersonProfile(friend)} className="flex flex-col items-center gap-2 min-w-fit cursor-pointer group">
-                    <div className="relative p-1 rounded-full border-2 border-indigo-600 group-hover:scale-105 transition-transform">
+                  <div key={ci.id} data-testid={`nearby-${ci.id}`} onClick={() => openPersonProfile(friend)} className="flex flex-col items-center gap-2 min-w-fit cursor-pointer group">
+                    <div className={`relative p-1 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] ring-2 ${ringCls} group-hover:scale-105 transition-transform`}>
                       <Avatar className="w-16 h-16">
-                        <AvatarFallback className="bg-sky-100 text-sky-700">{friend.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="bg-sky-100 text-sky-700 font-bold text-lg">{friend.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+                      <div className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs font-bold w-16 truncate">{friend.name}</p>
-                      <p className="text-[9px] text-slate-500 uppercase tracking-tighter w-16 truncate">{ci.location}</p>
+                      <p className="text-xs font-bold w-16 truncate text-slate-800">{friend.name}</p>
+                      <p className="text-[9px] text-slate-400 uppercase tracking-tight w-16 truncate font-normal">{ci.location}</p>
                     </div>
                   </div>
                 )
@@ -755,28 +783,38 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
 
         {/* People You May Know */}
         <section className="mt-8 px-6">
-          <h2 className="text-lg font-extrabold tracking-tight mb-6" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>People You May Know</h2>
-          <div className="space-y-8">
+          <h2 className="text-lg font-extrabold tracking-tight mb-6 text-slate-800" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>People You May Know</h2>
+          <div className="space-y-6">
             {sortUsers(filteredFriends).slice(0, 10).map((friend) => (
-              <div key={friend.id} className="flex items-center gap-4 cursor-pointer" onClick={() => openPersonProfile(friend)}>
-                <Avatar className="w-14 h-14 rounded-2xl"><AvatarFallback className="bg-indigo-100 text-indigo-700 text-lg font-bold">{friend.name.charAt(0)}</AvatarFallback></Avatar>
+              <div
+                key={friend.id}
+                data-testid={`person-card-${friend.id}`}
+                className="flex items-center gap-4 p-3 bg-white/40 rounded-3xl ring-1 ring-sky-400/5 cursor-pointer hover:bg-white/70 hover:ring-sky-400/20 transition-all duration-300"
+                onClick={() => openPersonProfile(friend)}
+              >
+                <Avatar className="w-14 h-14 rounded-2xl shadow-[0_0_0_2px_rgba(56,189,248,0.05)]">
+                  <AvatarFallback className="bg-sky-100 text-sky-700 text-lg font-bold rounded-2xl">{friend.name.charAt(0)}</AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-sm truncate">{friend.name}</h3>
-                  <p className="text-xs text-slate-500 truncate">{friend.major} • {friend.year}</p>
-                  <div className="flex gap-2 mt-1">
-                    {(friend.sharedCourses && friend.sharedCourses.length > 0) && (
-                      <span className="text-[9px] font-bold text-indigo-600 tracking-widest uppercase">{friend.sharedCourses.length} shared</span>
-                    )}
+                  <h3 className="font-bold text-sm truncate text-slate-800 leading-5">{friend.name}</h3>
+                  <p className="text-xs text-slate-400 truncate font-normal leading-4">{friend.major} • {friend.year}</p>
+                  <div className="flex gap-2 mt-1 pt-0.5">
+                    {(friend.sharedCourses && friend.sharedCourses.length > 0) ? (
+                      <span className="text-[9px] font-bold text-sky-400 tracking-wide uppercase">{friend.sharedCourses.length} shared</span>
+                    ) : (friend.mutualFriends !== undefined && friend.mutualFriends > 0) ? (
+                      <span className="text-[9px] font-bold text-sky-400 tracking-wide uppercase">{friend.mutualFriends} mutual</span>
+                    ) : null}
                     {getMutualClubs(friend).length > 0 && (
-                      <span className="text-[9px] font-bold text-violet-600 tracking-widest uppercase truncate max-w-[120px]">{getMutualClubs(friend)[0]}</span>
+                      <span className="text-[9px] font-bold text-violet-500 tracking-wide uppercase truncate max-w-[120px]">{getMutualClubs(friend)[0]}</span>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   {acceptedFriendIds.has(friend.id) ? (
-                    <button 
+                    <button
+                      data-testid={`person-message-${friend.id}`}
                       onClick={(e) => { e.stopPropagation(); createConversation(friend.id); if (onMessage) onMessage(); }}
-                      className="w-10 h-10 flex items-center justify-center bg-emerald-100 text-emerald-600 rounded-full hover:bg-emerald-200 transition-all duration-300"
+                      className="w-10 h-10 flex items-center justify-center bg-sky-400/10 text-sky-400 rounded-full hover:bg-sky-400 hover:text-white transition-all duration-300"
                     >
                       <MessageCircle className="w-5 h-5" />
                     </button>
@@ -785,9 +823,10 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
                       ✓
                     </button>
                   ) : (
-                    <button 
+                    <button
+                      data-testid={`person-add-${friend.id}`}
                       onClick={(e) => { e.stopPropagation(); handleSendRequest(friend.id); }}
-                      className="w-10 h-10 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-600 hover:text-white transition-all duration-300"
+                      className="w-10 h-10 flex items-center justify-center bg-sky-400/10 text-sky-400 rounded-full hover:bg-sky-400 hover:text-white transition-all duration-300"
                     >
                       <UserPlus className="w-5 h-5" />
                     </button>
@@ -802,19 +841,23 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
         <section className="mt-12">
           <div className="px-6 mb-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold tracking-tight" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>What's Happening</h2>
-              <SlidersHorizontal className="w-5 h-5 text-slate-500" />
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-800" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>What's Happening</h2>
+              <SlidersHorizontal className="w-4 h-4 text-slate-400" />
             </div>
             <div className="flex overflow-x-auto no-scrollbar gap-2 -mx-6 px-6">
-              {VIBE_CATEGORIES.map(vibe => (
-                <button
-                  key={vibe}
-                  onClick={() => setSelectedVibe(vibe)}
-                  className={`px-4 py-1.5 font-bold text-[10px] uppercase tracking-widest rounded-full transition-colors whitespace-nowrap ${selectedVibe === vibe ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
-                >
-                  {vibe === 'All' ? 'All Vibes' : vibe}
-                </button>
-              ))}
+              {VIBE_CATEGORIES.map(vibe => {
+                const active = selectedVibe === vibe;
+                return (
+                  <button
+                    key={vibe}
+                    data-testid={`vibe-filter-${vibe.toLowerCase()}`}
+                    onClick={() => setSelectedVibe(vibe)}
+                    className={`px-4 py-1.5 font-bold text-[10px] uppercase tracking-wide rounded-full transition-all whitespace-nowrap ${active ? 'bg-sky-400/10 text-sky-400 ring-1 ring-sky-400/20' : 'bg-white text-slate-600 ring-1 ring-sky-400/5 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:ring-sky-400/20'}`}
+                  >
+                    {vibe === 'All' ? 'All Vibes' : vibe}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -853,11 +896,12 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
 
       {/* FAB for Create Event */}
       {isAuthorized && (
-        <button 
+        <button
+          data-testid="discover-create-event-fab"
           onClick={() => setShowCreateEventModal(true)}
-          className="fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-br from-indigo-600 to-indigo-400 text-white rounded-full shadow-[0_8px_24px_rgba(79,70,229,0.4)] flex items-center justify-center z-[60] active:scale-90 transition-transform duration-200"
+          className="fixed bottom-24 right-6 w-16 h-16 bg-sky-400 text-white rounded-full shadow-[0_10px_15px_-3px_rgba(56,189,248,0.3),0_4px_6px_-4px_rgba(56,189,248,0.3),0_0_0_4px_rgba(255,255,255,1)] flex items-center justify-center z-[60] hover:bg-sky-500 active:scale-90 transition-all duration-200"
         >
-          <Plus className="w-8 h-8" />
+          <Plus className="w-7 h-7" />
         </button>
       )}
 
