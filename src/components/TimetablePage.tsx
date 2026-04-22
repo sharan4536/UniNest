@@ -20,6 +20,7 @@ import { parseTimetable, type ParsedClass } from '../utils/timetableParser';
 import { parseFFCSTimetable, ffcsToParsedClasses, formatTimeRange, type FFCSTimetable } from '../utils/ffcsParser';
 import { saveTimetable as saveUserTimetable, loadTimetable as loadUserTimetable, type ClassItem, createSOSAlert } from '../utils/firebase/firestore';
 import { StudySosSheet } from './StudySosSheet';
+import { ClassmatesRow } from './ClassmatesRow';
 
 const timeSlots = [
   '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
@@ -545,50 +546,55 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                 {timetable[day]!.map((cls: ClassItem) => (
                   <div
                     key={cls.id}
-                    className={`p-4 rounded-xl border flex justify-between items-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all ${getClassColor(cls.course)}`}
+                    className={`p-4 rounded-xl border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all ${getClassColor(cls.course)}`}
                     onClick={() => {
                       setSelectedClass(cls);
                       setSelectedClassDay(day);
                     }}
                   >
-                    <div>
-                      <div className="font-bold text-base flex items-center gap-2">
-                        {cls.course}
-                        <span className="text-xs font-normal opacity-70 bg-white/50 px-2 py-0.5 rounded-full">{cls.title}</span>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-bold text-base flex items-center gap-2">
+                          {cls.course}
+                          <span className="text-xs font-normal opacity-70 bg-white/50 px-2 py-0.5 rounded-full">{cls.title}</span>
+                        </div>
+                        <div className="text-sm opacity-80 mt-1 flex items-center gap-3">
+                          <span className="flex items-center gap-1">🕒 {cls.time}</span>
+                          <span className="flex items-center gap-1">📍 {cls.location}</span>
+                        </div>
+                        <div className="text-xs opacity-60 mt-1">{cls.academicBlock || cls.professor}</div>
                       </div>
-                      <div className="text-sm opacity-80 mt-1 flex items-center gap-3">
-                        <span className="flex items-center gap-1">🕒 {cls.time}</span>
-                        <span className="flex items-center gap-1">📍 {cls.location}</span>
-                      </div>
-                      <div className="text-xs opacity-60 mt-1">{cls.academicBlock || cls.professor}</div>
+                      {isEditing && (
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            className="h-8 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200 border-none shadow-none"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleEditClass(day, cls);
+                            }}
+                            data-testid={`edit-class-list-${cls.id}`}
+                          >
+                            <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 border-none shadow-none"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleDeleteClass(day, cls.id);
+                            }}
+                            data-testid={`delete-class-list-${cls.id}`}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {isEditing && (
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          className="h-8 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200 border-none shadow-none"
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            handleEditClass(day, cls);
-                          }}
-                          data-testid={`edit-class-list-${cls.id}`}
-                        >
-                          <Edit className="h-3.5 w-3.5 mr-1" /> Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 border-none shadow-none"
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            handleDeleteClass(day, cls.id);
-                          }}
-                          data-testid={`delete-class-list-${cls.id}`}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    )}
+                    <div className="mt-3 pt-3 border-t border-slate-200/60">
+                      <ClassmatesRow cls={cls} day={day} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1149,19 +1155,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                           </div>
 
                           <div className="pt-4 inline-flex w-full items-center justify-between">
-                            <div className="flex items-center">
-                              {bubbles.map((bubble, bubbleIndex) => (
-                                <div
-                                  key={`${cls.id}-${bubble}-${bubbleIndex}`}
-                                  className={`-ml-2 first:ml-0 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-sky-100 text-[10px] font-bold text-sky-700`}
-                                >
-                                  {bubble}
-                                </div>
-                              ))}
-                              <div className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-zinc-200 text-[10px] font-bold text-zinc-600">
-                                +{Math.max(2, Math.round((cls.duration || 1) * 4))}
-                              </div>
-                            </div>
+                            <ClassmatesRow cls={cls} day={selectedDay} />
 
                             <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-800 text-white shadow-[0px_4px_6px_-1px_rgba(0,98,134,0.20),0px_2px_4px_-2px_rgba(0,98,134,0.20)]">
                               {isEditing ? (

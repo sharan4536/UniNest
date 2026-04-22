@@ -131,6 +131,71 @@
     @apply text-[13px] font-semibold text-slate-500 uppercase tracking-wider mb-2 ms-4;
   }
 
+
+  /* ---------------------------------------------------------------------- */
+  /* Global Type Scale (single source of truth for typography)              */
+  /* Use these classes instead of ad-hoc text-* combinations so every       */
+  /* screen shares the same font, weight, size, and line-height rhythm.    */
+  /* ---------------------------------------------------------------------- */
+  .ui-h1 {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    @apply text-[24px] font-extrabold leading-[32px] tracking-tight text-slate-900;
+  }
+  .ui-h2 {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    @apply text-[20px] font-bold leading-[28px] tracking-tight text-slate-900;
+  }
+  .ui-h3 {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    @apply text-[16px] font-bold leading-[22px] tracking-tight text-slate-800;
+  }
+  .ui-subheading {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[13px] font-semibold leading-[18px] tracking-wide text-slate-500 uppercase;
+  }
+  .ui-body {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[14px] font-normal leading-[20px] text-slate-700;
+  }
+  .ui-body-strong {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[14px] font-semibold leading-[20px] text-slate-800;
+  }
+  .ui-caption {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[12px] font-medium leading-[16px] text-slate-500;
+  }
+  .ui-button-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[14px] font-bold leading-[20px] tracking-tight;
+  }
+  .ui-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[12px] font-semibold leading-[16px] tracking-wide text-slate-600;
+  }
+  .ui-eyebrow {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply text-[10px] font-bold leading-[14px] tracking-[0.12em] uppercase text-sky-500;
+  }
+
+  /* Reusable primitives built from the scale */
+  .ui-card {
+    @apply rounded-[20px] bg-white/70 ring-1 ring-sky-400/10 p-4 backdrop-blur-sm;
+  }
+  .ui-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-sky-400/10 px-3 py-1 text-[12px] font-semibold text-sky-700 ring-1 ring-sky-400/20;
+  }
+  .ui-input {
+    @apply h-11 w-full rounded-2xl border border-sky-400/20 bg-white px-3.5 text-[14px] text-slate-800 outline-none transition focus:border-sky-400;
+  }
+  .ui-btn-primary {
+    @apply h-11 rounded-2xl bg-sky-400 text-white text-[14px] font-bold shadow-[0_10px_15px_-3px_rgba(56,189,248,0.3),0_4px_6px_-4px_rgba(56,189,248,0.3)] transition hover:bg-sky-500 active:scale-[0.98] disabled:opacity-60;
+  }
+  .ui-btn-secondary {
+    @apply h-11 rounded-2xl bg-white text-sky-600 text-[14px] font-bold ring-1 ring-sky-400/15 transition hover:bg-sky-50 active:scale-[0.98];
+  }
+
+
   /* Bottom Sheets Native Modals */
   .bottom-sheet-content {
     @apply fixed left-0 bottom-0 top-auto w-full max-h-[90vh] overflow-y-auto sm:max-w-md sm:left-1/2 sm:-translate-x-1/2 sm:bottom-4 rounded-t-[2.5rem] sm:rounded-[2.5rem] bg-white/95 backdrop-blur-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-slate-200/50 p-6;
