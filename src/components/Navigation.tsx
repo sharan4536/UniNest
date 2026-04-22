@@ -1,16 +1,17 @@
 import React from 'react';
+import { CalendarDays, Compass, Home, MapPinned, MessageCircle, UserRound } from 'lucide-react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { getFriendRequests, getUnreadMessagesCount, getUserStatus } from '../utils/firebase/firestore';
 
-type NavItem = { id: string; label: string; icon: string };
+type NavItem = { id: string; label: string; mobileLabel: string; icon: React.ComponentType<{ className?: string }> };
 const navigationItems: NavItem[] = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'discover', label: 'Discover', icon: '🔍' },
-  { id: 'timetable', label: 'Timetable', icon: '📅' },
-  { id: 'messages', label: 'Messages', icon: '💬' },
-  { id: 'profile', label: 'Profile', icon: '👤' },
+  { id: 'home', label: 'Home', mobileLabel: 'Map', icon: Home },
+  { id: 'discover', label: 'Discover', mobileLabel: 'Find', icon: Compass },
+  { id: 'timetable', label: 'Timetable', mobileLabel: 'Timetable', icon: CalendarDays },
+  { id: 'messages', label: 'Messages', mobileLabel: 'Spaces', icon: MessageCircle },
+  { id: 'profile', label: 'Profile', mobileLabel: 'Me', icon: UserRound },
 ];
 
 export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser }: {
@@ -53,6 +54,7 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
   }, []);
 
   const totalBadgeCount = unreadMessagesCount || 0;
+  const requestBadgeCount = pendingRequestsCount || 0;
 
   return (
     <>
@@ -83,7 +85,7 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
                   }`}
               >
                 <div className="flex items-center justify-center w-6">
-                  <span className="text-xl">{item.icon}</span>
+                  <item.icon className="h-5 w-5" />
                 </div>
                 <span>{item.label}</span>
                 {item.id === 'messages' && totalBadgeCount > 0 && (
@@ -123,52 +125,38 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
         </div>
       </nav>
 
-      {/* Mobile Navigation - Fixed Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-[32px] border-t border-slate-200/50 pb-[env(safe-area-inset-bottom)] pb-1 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] transition-all">
-        <div className="flex justify-around items-center px-1 h-[68px]">
+      {/* Mobile Navigation - Shared Bottom Nav */}
+      <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 pb-[env(safe-area-inset-bottom)]">
+        <div className="relative w-full rounded-t-[32px] bg-white/80 shadow-[0_-8px_32px_rgba(41,48,48,0.05)] backdrop-blur-[32px]">
+          <div className="grid h-24 w-full grid-cols-5 items-start px-2 pt-4">
           {navigationItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setCurrentPage(item.id)}
-              className="flex-1 flex flex-col items-center justify-center h-full relative group space-y-1 active:scale-[0.92] transition-transform duration-200"
+              className="relative flex min-w-0 flex-col items-center justify-start gap-[3px] rounded-2xl px-1 py-1 transition-transform duration-200 active:scale-[0.94]"
+              aria-label={item.label}
             >
-              <div className={`relative flex items-center justify-center w-12 h-8 rounded-full transition-all duration-300 ${currentPage === item.id ? 'bg-sky-500/15' : 'bg-transparent'}`}>
-                <span className={`text-[24px] transition-all duration-300 ${currentPage === item.id ? 'scale-110' : 'scale-100 grayscale opacity-40'}`}>
-                  {item.icon}
-                </span>
+              <div className={`relative flex h-8 items-center justify-center transition-all duration-300 ${currentPage === item.id ? 'text-sky-800' : 'text-zinc-600/70'}`}>
+                <item.icon className={`${item.id === 'timetable' ? 'h-5 w-5' : 'h-4.5 w-4.5'} ${currentPage === item.id ? 'stroke-[2.3]' : ''}`} />
                 {item.id === 'messages' && totalBadgeCount > 0 && (
-                  <span className="absolute top-0 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white/80" />
+                  <span className="absolute -right-1 top-0 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white/80" />
+                )}
+                {item.id === 'discover' && requestBadgeCount > 0 && (
+                  <span className="absolute -right-1 top-0 h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-white/80" />
                 )}
               </div>
-              <span className={`text-[10px] font-semibold tracking-wide transition-all duration-300 ${currentPage === item.id ? 'text-sky-600' : 'text-slate-400'}`}>
-                {item.label}
+              <span className={`max-w-full truncate text-[10px] font-semibold uppercase leading-4 tracking-[0.06em] transition-all duration-300 ${currentPage === item.id ? 'text-sky-800' : 'text-zinc-600/80'}`}>
+                {item.mobileLabel}
               </span>
+              {currentPage === item.id && (
+                <span className="mt-0.5 h-1 w-1 rounded-full bg-sky-800" />
+              )}
             </button>
           ))}
+          </div>
         </div>
       </nav>
 
-      {/* Mobile Header - Native iOS Minimal */}
-      <div className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-xl px-4 h-14 border-b border-slate-200 flex items-center justify-between pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-2">
-          <span className="text-[20px] font-bold text-slate-800 tracking-tight">
-            UniNest
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Avatar className="w-8 h-8 rounded-full shadow-sm ring-1 ring-slate-200 active:opacity-70 transition-opacity" onClick={() => setCurrentPage('profile')}>
-              <AvatarFallback className="bg-sky-50 text-sky-600 text-xs font-bold">
-                {(currentUser?.name || currentUser?.displayName || 'U')?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            {userStatus === 'available' && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
-            )}
-          </div>
-        </div>
-      </div>
     </>
   );
 }

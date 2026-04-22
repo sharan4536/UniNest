@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from './ui/dropdown-menu';
-import { MoreVertical, Plus, Upload, Edit, FileText, Image as ImageIcon, FileUp } from 'lucide-react';
+import { MoreVertical, Plus, Upload, Edit, FileText, Image as ImageIcon, FileUp, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromPDF } from '../utils/pdfParser';
 import { extractTextFromImage } from '../utils/imageParser';
@@ -68,6 +68,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     review: ''
   });
   const [activeTab, setActiveTab] = useState<'grid' | 'list'>('grid');
+  const [selectedDay, setSelectedDay] = useState<string>('Monday');
 
   const uploadTimetableFile = async (file: File) => {
     setIsParsingFile(true);
@@ -168,6 +169,14 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     applyView();
     mql.addEventListener('change', applyView);
     return () => mql.removeEventListener('change', applyView);
+  }, []);
+
+  useEffect(() => {
+    const dayIndex = new Date().getDay();
+    const normalized = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex];
+    if (days.includes(normalized)) {
+      setSelectedDay(normalized);
+    }
   }, []);
 
   const loadTimetable = async () => {
@@ -469,20 +478,108 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     Object.values(timetable).flat().map(c => c.course)
   ));
 
+  const selectedDayClasses = [...(timetable[selectedDay] || [])].sort(
+    (a, b) => getTimeSlotIndex(a.time) - getTimeSlotIndex(b.time)
+  );
+
+  const weekDates = useMemo(() => {
+    const now = new Date();
+    const dayIndex = now.getDay();
+    const mondayOffset = dayIndex === 0 ? -6 : 1 - dayIndex;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+
+    return days.map((day, index) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return {
+        day,
+        short: day.slice(0, 3).toUpperCase(),
+        dateNumber: date.getDate(),
+      };
+    });
+  }, []);
+
+  const getSessionVariant = (cls: ClassItem) => {
+    const source = `${cls.title} ${cls.course}`.toLowerCase();
+    if (source.includes('lab') || source.includes('workshop')) {
+      return {
+        label: 'Workshop',
+        chip: 'bg-slate-300 text-slate-700',
+        activeDot: 'bg-slate-400',
+        card: 'bg-slate-100/80',
+      };
+    }
+    if (source.includes('seminar')) {
+      return {
+        label: 'Seminar',
+        chip: 'bg-indigo-200 text-indigo-900',
+        activeDot: 'bg-sky-400/40',
+        card: 'bg-gradient-to-b from-white to-slate-50',
+      };
+    }
+    return {
+      label: 'Lecture',
+      chip: 'bg-blue-200 text-sky-900',
+      activeDot: 'bg-sky-800',
+      card: 'bg-white',
+    };
+  };
+
+  const getCourseBubbles = (cls: ClassItem) => {
+    const seed = (cls.course || 'UNI').replace(/[^A-Z0-9]/gi, '').slice(0, 3).toUpperCase();
+    return [seed, `${seed[0] || 'U'}${seed[1] || 'N'}`, `${seed[0] || 'U'}${seed[2] || 'I'}`];
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 pb-24 space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-2 slide-up-fade" style={{ animationDelay: '0.1s' }}>
-        <div>
-          <h1 className="text-3xl font-bold text-gradient mb-1">My Timetable</h1>
-          <p className="text-slate-500 font-medium">Manage your class schedule and study sessions</p>
+    <div className="min-h-screen bg-slate-100 pb-32">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center gap-10 px-6 pb-32 pt-24">
+        <div className="w-full max-w-md space-y-1">
+          <div className="text-xs font-bold uppercase leading-4 tracking-wide text-sky-800">Academic Journey</div>
+          <h1 className="font-['Plus_Jakarta_Sans'] text-4xl font-extrabold leading-10 text-gray-800">Your Schedule.</h1>
+          <div className="max-w-72 pt-1 text-base leading-6 text-zinc-600">
+            Curating your intellectual growth,
+            <br />
+            one session at a time.
+          </div>
         </div>
-        <div className="flex w-full md:w-auto items-center justify-end gap-3">
-                      <Button 
-              className="rounded-full bg-red-500 text-white hover:bg-red-600 font-bold shadow-[0_0_15px_rgba(239,68,68,0.3)] border border-red-400"
-              onClick={() => setSosSheetOpen(true)}
-            >
-              🆘 Study SOS
-            </Button>
+
+        <div className="w-full max-w-md">
+          <div className="flex items-center gap-4 overflow-x-auto pb-2">
+            {weekDates.map((item: { day: string; short: string; dateNumber: number }) => {
+              const active = selectedDay === item.day;
+              return (
+                <button
+                  key={item.day}
+                  type="button"
+                  onClick={() => setSelectedDay(item.day)}
+                  className={`relative flex h-24 min-w-16 flex-col items-center justify-center rounded-full px-5 transition-all ${
+                    active
+                      ? 'bg-sky-400 text-cyan-950 shadow-[0_10px_15px_-3px_rgba(0,98,134,0.10),0_4px_6px_-4px_rgba(0,98,134,0.10)]'
+                      : 'bg-white text-zinc-600'
+                  }`}
+                >
+                  <span className={`text-[10px] font-bold uppercase leading-4 ${active ? 'opacity-70' : 'opacity-60'}`}>{item.short}</span>
+                  <span className="text-xl font-extrabold leading-7">{item.dateNumber}</span>
+                  {active && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-cyan-950" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="w-full max-w-2xl">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div className="text-sm font-medium text-zinc-600">
+              {loading ? 'Loading timetable...' : `${selectedDayClasses.length} session${selectedDayClasses.length === 1 ? '' : 's'} planned for ${selectedDay}`}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                className="rounded-full bg-red-500 text-white hover:bg-red-600 font-bold shadow-[0_0_15px_rgba(239,68,68,0.3)] border border-red-400"
+                onClick={() => setSosSheetOpen(true)}
+              >
+                🆘 Study SOS
+              </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-slate-100/50">
@@ -671,27 +768,98 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
               </Tabs>
             </DialogContent>
           </Dialog>
+            </div>
+          </div>
+
+          <div className="relative pt-2">
+            <div className="absolute left-3 top-2 h-[calc(100%-1rem)] w-0.5 rounded-full bg-gradient-to-b from-sky-400 to-sky-400/10 opacity-30" />
+            <div className="space-y-12">
+              {loading ? (
+                <div className="pl-10 text-sm text-zinc-600">Loading your academic journey...</div>
+              ) : selectedDayClasses.length === 0 ? (
+                <div className="pl-10">
+                  <div className="rounded-[32px] bg-white p-6 shadow-[0px_8px_30px_0px_rgba(0,0,0,0.02)]">
+                    <div className="text-xl font-bold text-gray-800">No classes scheduled</div>
+                    <div className="mt-2 text-sm text-zinc-600">Use the menu to add a class or import your timetable for {selectedDay}.</div>
+                  </div>
+                </div>
+              ) : (
+                selectedDayClasses.map((cls, index) => {
+                  const variant = getSessionVariant(cls);
+                  const bubbles = getCourseBubbles(cls);
+                  return (
+                    <div key={cls.id} className={`relative pl-10 ${index === selectedDayClasses.length - 1 ? 'pb-2' : ''}`}>
+                      <div className="absolute left-0 top-[6px] inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+                        <div className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-sky-800' : variant.activeDot}`} />
+                      </div>
+                      <div className={`space-y-3 ${index > 1 ? 'opacity-70' : ''}`}>
+                        <div className="inline-flex w-full items-center justify-between">
+                          <div className={`text-xs font-bold leading-4 tracking-tight ${index === 0 ? 'text-sky-800' : 'text-zinc-600/70'}`}>
+                            {cls.time}
+                          </div>
+                          <div className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase leading-4 ${variant.chip}`}>
+                            {variant.label}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedClass(cls)}
+                          className={`w-full rounded-[32px] p-6 text-left shadow-[0px_8px_30px_0px_rgba(0,0,0,0.02)] outline outline-1 outline-white/50 ${variant.card}`}
+                        >
+                          <div className="space-y-2">
+                            <div className="text-xl font-bold leading-7 text-gray-800">{cls.course || cls.title}</div>
+                            <div className="inline-flex items-center gap-2 text-sm leading-5 text-zinc-600">
+                              <MapPin className="h-3.5 w-3.5" />
+                              <span>{cls.location || cls.academicBlock || 'Location TBA'}</span>
+                            </div>
+                            {cls.title && cls.course !== cls.title && (
+                              <div className="text-sm text-zinc-500">{cls.title}</div>
+                            )}
+                          </div>
+
+                          <div className="pt-4 inline-flex w-full items-center justify-between">
+                            <div className="flex items-center">
+                              {bubbles.map((bubble, bubbleIndex) => (
+                                <div
+                                  key={`${cls.id}-${bubble}-${bubbleIndex}`}
+                                  className={`-ml-2 first:ml-0 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-sky-100 text-[10px] font-bold text-sky-700`}
+                                >
+                                  {bubble}
+                                </div>
+                              ))}
+                              <div className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-zinc-200 text-[10px] font-bold text-zinc-600">
+                                +{Math.max(2, Math.round((cls.duration || 1) * 4))}
+                              </div>
+                            </div>
+
+                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-800 text-white shadow-[0px_4px_6px_-1px_rgba(0,98,134,0.20),0px_2px_4px_-2px_rgba(0,98,134,0.20)]">
+                              {isEditing ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClass(selectedDay, cls.id);
+                                  }}
+                                  className="text-xs font-bold"
+                                >
+                                  ×
+                                </button>
+                              ) : (
+                                <Plus className="h-4 w-4 rotate-45" />
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       </div>
-
-      <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'grid' | 'list')} className="space-y-6 slide-up-fade" style={{ animationDelay: '0.2s' }}>
-        <TabsList className="bg-slate-100/50 p-1 rounded-full w-full max-w-sm mx-auto grid grid-cols-2">
-          <TabsTrigger value="grid" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm transition-all py-2">Grid View</TabsTrigger>
-          <TabsTrigger value="list" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm transition-all py-2">List View</TabsTrigger>
-        </TabsList>
-        <TabsContent value="grid">
-          <Card className="glass-card border-none shadow-lg overflow-hidden">
-            <CardContent className="p-6 max-h-[70vh] overflow-auto">
-              <TimetableGrid />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="list">
-          <div className="max-h-[70vh] overflow-auto pr-2">
-            <ClassList />
-          </div>
-        </TabsContent>
-      </Tabs>
 
       {/* Class Details Dialog */}
       {selectedClass && (
@@ -738,7 +906,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
       )}
 
       {/* Weekly Summary */}
-      <Card className="glass-card border-none shadow-lg slide-up-fade" style={{ animationDelay: '0.3s' }}>
+      <Card className="mx-auto hidden max-w-2xl glass-card border-none shadow-lg slide-up-fade md:block" style={{ animationDelay: '0.3s' }}>
         <CardHeader className="pb-2 border-b border-gray-100/50">
           <CardTitle className="text-lg text-slate-800 flex items-center gap-2">
             <span className="text-xl">📊</span> Weekly Summary

@@ -173,6 +173,7 @@ export default function App() {
           <HomePage
             currentUser={currentUser as any}
             onOpenProfile={(user: any) => { setViewedProfile(user); setCurrentPage('friendProfile'); }}
+            onNavigate={setCurrentPage}
           />
         );
       case 'profile':
@@ -204,15 +205,15 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-sky-100 selection:text-sky-900 pb-20 md:pb-0">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground selection:bg-sky-100 selection:text-sky-900 md:flex-row pb-24 md:pb-0">
       <Navigation
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         onLogout={handleLogout}
         currentUser={currentUser}
       />
-      <main className="flex-1 overflow-y-auto relative bg-background no-scrollbar">
-        <div className="w-full max-w-4xl mx-auto px-0 md:px-8 py-0 md:py-8">
+      <main className="relative flex-1 overflow-y-auto bg-background no-scrollbar">
+        <div className={currentPage === 'home' ? 'w-full' : 'w-full max-w-4xl mx-auto px-0 md:px-8 py-0 md:py-8'}>
           {renderPage()}
         </div>
       </main>

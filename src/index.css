@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
@@ -183,5 +183,25 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .campus-glass-card {
+    @apply border border-white/45 bg-white/58 backdrop-blur-[20px] shadow-[0_18px_50px_rgba(15,23,42,0.12)];
+  }
+
+  .campus-vibe-pill {
+    @apply border border-white/45 bg-white/42 backdrop-blur-[14px];
+  }
+
+  .campus-glass-icon {
+    @apply border border-white/55 bg-white/68 backdrop-blur-[18px];
+  }
+
+  .campus-live-ring {
+    box-shadow: 0 0 0 2px #f1f7fb, 0 0 0 4px rgba(56, 189, 248, 0.85);
+  }
+
+  .campus-pulse-shell {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
 }
