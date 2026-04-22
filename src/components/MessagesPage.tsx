@@ -628,22 +628,22 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
               </div>
             </section>
 
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="ml-1 text-sm font-bold uppercase tracking-[0.1em] text-slate-500">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="ml-1 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                 {surface === 'messages' ? 'Recent Messages' : 'Friend Requests'}
               </h2>
-              <div className="rounded-full bg-slate-100 p-1">
+              <div className="rounded-full bg-slate-100 p-0.5">
                 <button
                   type="button"
                   onClick={() => setSurface('messages')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${surface === 'messages' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${surface === 'messages' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}
                 >
                   Messages
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurface('requests')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${surface === 'requests' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${surface === 'requests' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}
                 >
                   Requests
                 </button>
@@ -651,7 +651,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
             </div>
 
             {surface === 'messages' ? (
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {loading ? (
                   <EmptyState title="Loading conversations..." subtitle="Syncing your live inbox." />
                 ) : filteredConversations.length === 0 ? (
@@ -662,10 +662,10 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                       key={conversation.id}
                       type="button"
                       onClick={() => selectConversation(conversation)}
-                      className="group flex w-full items-center gap-4 rounded-[1.75rem] p-4 text-left transition-all duration-300 hover:bg-slate-100/80"
+                      className="group flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all duration-300 hover:bg-slate-100/80"
                     >
                       <div className="relative shrink-0">
-                        <div className="h-14 w-14 overflow-hidden rounded-full bg-sky-100">
+                        <div className="h-12 w-12 overflow-hidden rounded-full bg-sky-100">
                           {conversation.participant.avatar ? (
                             <img
                               src={conversation.participant.avatar}
@@ -679,31 +679,31 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                           )}
                         </div>
                         <div
-                          className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-background ${
+                          className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background ${
                             conversation.participant.online ? 'bg-emerald-500' : 'bg-slate-300'
                           }`}
                         />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-baseline justify-between gap-3">
+                        <div className="mb-0.5 flex items-baseline justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-1.5">
-                            <h3 className="truncate font-bold text-slate-900">{conversation.participant.name}</h3>
+                            <h3 className="truncate text-sm font-bold text-slate-900">{conversation.participant.name}</h3>
                             {sharedKeys[conversation.participant.id] && (
                               <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
                             )}
                           </div>
-                          <span className={`shrink-0 text-[11px] ${conversation.unreadCount > 0 ? 'font-bold text-sky-700' : 'font-medium text-slate-400'}`}>
+                          <span className={`shrink-0 text-[10px] ${conversation.unreadCount > 0 ? 'font-bold text-sky-700' : 'font-medium text-slate-400'}`}>
                             {formatTime(conversation.lastMessage.timestamp)}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <p className={`truncate pr-2 text-sm ${conversation.unreadCount > 0 ? 'font-semibold text-slate-800' : 'font-medium text-slate-500'}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={`truncate pr-2 text-xs ${conversation.unreadCount > 0 ? 'font-semibold text-slate-800' : 'font-medium text-slate-500'}`}>
                             {conversation.lastMessage.senderId === myId ? 'You: ' : ''}
                             {conversation.lastMessage.text}
                           </p>
                           {conversation.unreadCount > 0 ? (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-[10px] font-bold text-white">
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[9px] font-bold text-white">
                               {conversation.unreadCount}
                             </span>
                           ) : conversation.lastMessage.senderId === myId ? (
@@ -711,7 +711,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                           ) : null}
                         </div>
                         {!conversation.participant.online && formatLastActive(conversation.participant.lastSeen) && (
-                          <p className="mt-1 text-xs text-slate-400">{formatLastActive(conversation.participant.lastSeen)}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">{formatLastActive(conversation.participant.lastSeen)}</p>
                         )}
                       </div>
                     </button>
@@ -723,25 +723,25 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
             ) : friendRequests.length === 0 ? (
               <EmptyState title="No pending requests" subtitle="When someone sends you a request, it will show up here." />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {friendRequests.map((request) => (
-                  <div key={request.id} className="rounded-[1.75rem] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                  <div key={request.id} className="rounded-2xl bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                     <div className="flex items-start gap-3">
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-10 w-10">
                         <AvatarFallback>{(request.senderName || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <h4 className="truncate font-semibold text-slate-900">{request.senderName || 'Friend Request'}</h4>
-                          <span className="text-xs text-slate-400">{request.createdAt?.toDate ? formatTime(request.createdAt.toDate()) : ''}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="truncate text-sm font-semibold text-slate-900">{request.senderName || 'Friend Request'}</h4>
+                          <span className="text-[10px] text-slate-400">{request.createdAt?.toDate ? formatTime(request.createdAt.toDate()) : ''}</span>
                         </div>
-                        <p className="mt-1 text-sm text-slate-500">Wants to connect with you.</p>
-                        <div className="mt-3 flex gap-2">
+                        <p className="mt-0.5 text-xs text-slate-500">Wants to connect with you.</p>
+                        <div className="mt-2 flex gap-2">
                           <Button
                             size="sm"
                             onClick={() => handleAcceptRequest(request)}
                             disabled={processingRequests.has(request.id || '')}
-                            className="rounded-full bg-sky-600 text-white hover:bg-sky-700"
+                            className="h-8 rounded-full bg-sky-600 text-xs text-white hover:bg-sky-700"
                           >
                             {processingRequests.has(request.id || '') ? 'Processing...' : 'Accept'}
                           </Button>
@@ -750,7 +750,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                             variant="outline"
                             onClick={() => handleIgnoreRequest(request)}
                             disabled={processingRequests.has(request.id || '')}
-                            className="rounded-full"
+                            className="h-8 rounded-full text-xs"
                           >
                             Ignore
                           </Button>
@@ -764,14 +764,14 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
           </div>
         </section>
 
-        <section className={`${selectedConversation ? 'block' : 'hidden lg:block'} relative min-h-[calc(100vh-4rem)] bg-white/50`}>
+        <section className={`${selectedConversation ? 'block' : 'hidden lg:block'} relative bg-white/50`}>
           {selectedConversation ? (
-            <div className="flex h-full flex-col">
-              <div className="flex items-center gap-3 border-b border-slate-200/60 bg-white/70 px-4 py-4 backdrop-blur-xl md:px-6">
+            <div className="flex h-[calc(100vh-9rem)] flex-col md:h-[calc(100vh-5rem)]">
+              <div className="flex items-center gap-3 border-b border-slate-200/60 bg-white/70 px-4 py-3 backdrop-blur-xl md:px-6">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden"
+                  className="h-8 w-8 lg:hidden"
                   onClick={() => setSelectedConversation(null)}
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -782,22 +782,22 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                   onClick={() => openFriendProfile(selectedConversation.participant.id)}
                   className="relative"
                 >
-                  <Avatar className="h-11 w-11">
+                  <Avatar className="h-10 w-10">
                     <AvatarFallback>{selectedConversation.participant.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   {selectedConversation.participant.online && (
-                    <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" />
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                   )}
                 </button>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="truncate font-bold text-slate-900">{selectedConversation.participant.name}</h3>
+                    <h3 className="truncate text-sm font-bold text-slate-900">{selectedConversation.participant.name}</h3>
                     {sharedKeys[selectedConversation.participant.id] && (
-                      <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
                     )}
                   </div>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-xs text-slate-500">
                     {selectedConversation.participant.online
                       ? 'Online now'
                       : formatLastActive(selectedConversation.participant.lastSeen) || 'Offline'}
@@ -805,8 +805,8 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.12),_transparent_24%),linear-gradient(180deg,_rgba(241,247,251,0.7),_rgba(255,255,255,0.92))] px-4 py-6 md:px-6">
-                <div className="mx-auto flex h-full max-w-3xl flex-col gap-4">
+              <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.12),_transparent_24%),linear-gradient(180deg,_rgba(241,247,251,0.7),_rgba(255,255,255,0.92))] px-4 py-4 md:px-6">
+                <div className="mx-auto flex max-w-3xl flex-col gap-3">
                   {selectedConversation.messages.length === 0 ? (
                     <EmptyState title="No messages yet" subtitle="Say hi and start the conversation." compact />
                   ) : (
@@ -816,7 +816,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                         className={`flex ${message.senderId === myId ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-[1.5rem] px-5 py-3 shadow-sm ${
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 shadow-sm ${
                             message.senderId === myId
                               ? 'rounded-tr-md bg-gradient-to-tr from-sky-700 to-sky-400 text-white'
                               : 'rounded-tl-md bg-white text-slate-800 ring-1 ring-slate-200/70'
@@ -824,7 +824,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                         >
                           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.text}</p>
                           <p
-                            className={`mt-1 text-right text-[10px] ${
+                            className={`mt-0.5 text-right text-[10px] ${
                               message.senderId === myId ? 'text-white/70' : 'text-slate-400'
                             }`}
                           >
@@ -838,10 +838,10 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                 </div>
               </div>
 
-              <div className="border-t border-slate-200/60 bg-white/85 px-4 py-4 backdrop-blur-xl md:px-6">
+              <div className="border-t border-slate-200/60 bg-white/85 px-4 py-3 backdrop-blur-xl md:px-6">
                 <div className="mx-auto max-w-3xl">
                   {sharedKeys[selectedConversation.participant.id] && (
-                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700">
+                    <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-700">
                       <ShieldCheck className="h-3 w-3" />
                       End-to-end encrypted
                     </div>
@@ -858,11 +858,11 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
                           handleSendMessage();
                         }
                       }}
-                      className="h-12 rounded-full border-slate-200 bg-slate-50 pl-4"
+                      className="h-11 rounded-full border-slate-200 bg-slate-50 pl-4"
                     />
                     <Button
                       onClick={handleSendMessage}
-                      className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-sky-700 to-sky-400 p-0 text-white"
+                      className="h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-tr from-sky-700 to-sky-400 p-0 text-white"
                     >
                       <MessageCircle className="h-5 w-5" />
                     </Button>
@@ -878,14 +878,16 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
         </section>
       </main>
 
-      <button
-        type="button"
-        onClick={() => setShowComposer(true)}
-        className="fixed bottom-28 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-700 to-sky-400 text-white shadow-xl transition active:scale-90"
-        aria-label="Compose"
-      >
-        <Edit3 className="h-6 w-6" />
-      </button>
+      {!selectedConversation && (
+        <button
+          type="button"
+          onClick={() => setShowComposer(true)}
+          className="fixed bottom-28 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-700 to-sky-400 text-white shadow-xl transition active:scale-90 md:bottom-6"
+          aria-label="Compose"
+        >
+          <Edit3 className="h-5 w-5" />
+        </button>
+      )}
 
       {showComposer && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 p-4 backdrop-blur-[2px] sm:items-center">
