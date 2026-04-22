@@ -705,14 +705,12 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-32">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center gap-10 px-6 pb-32 pt-24">
-        <div className="w-full max-w-md space-y-1">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center gap-6 px-6 pb-32 pt-6 md:pt-8">
+        <div className="w-full max-w-2xl space-y-1">
           <div className="text-xs font-bold uppercase leading-4 tracking-wide text-sky-800">Academic Journey</div>
-          <h1 className="font-['Plus_Jakarta_Sans'] text-4xl font-extrabold leading-10 text-gray-800">Your Schedule.</h1>
-          <div className="max-w-72 pt-1 text-base leading-6 text-zinc-600">
-            Curating your intellectual growth,
-            <br />
-            one session at a time.
+          <h1 className="font-['Plus_Jakarta_Sans'] text-3xl md:text-4xl font-extrabold leading-tight text-gray-800">Your Schedule.</h1>
+          <div className="max-w-lg pt-0.5 text-sm md:text-base leading-6 text-zinc-600">
+            Curating your intellectual growth, one session at a time.
           </div>
         </div>
 
@@ -804,8 +802,8 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
           </div>
         )}
 
-        <div className="w-full max-w-md">
-          <div className="flex items-center gap-4 overflow-x-auto pb-2">
+        <div className="w-full max-w-2xl">
+          <div className="flex items-center gap-3 overflow-x-auto pb-2">
             {weekDates.map((item: { day: string; short: string; dateNumber: number }) => {
               const active = selectedDay === item.day;
               return (
@@ -829,7 +827,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
         </div>
 
         <div className="w-full max-w-2xl">
-          <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-sm font-medium text-zinc-600">
               {loading ? 'Loading timetable...' : `${selectedDayClasses.length} session${selectedDayClasses.length === 1 ? '' : 's'} planned for ${selectedDay}`}
             </div>
@@ -1097,7 +1095,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
 
           <div className="relative pt-2">
             <div className="absolute left-3 top-2 h-[calc(100%-1rem)] w-0.5 rounded-full bg-gradient-to-b from-sky-400 to-sky-400/10 opacity-30" />
-            <div className="space-y-12">
+            <div className="space-y-6">
               {loading ? (
                 <div className="pl-10 text-sm text-zinc-600">Loading your academic journey...</div>
               ) : selectedDayClasses.length === 0 ? (

@@ -50,6 +50,15 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // Public widget snapshot used by iOS Scriptable & Android KWGT widgets.
+    // Reads are public (no auth — mobile widgets can't hold a session); writes
+    // are restricted to the owner. The web app mirrors the user's timetable
+    // into this collection every time they save.
+    match /publicWidgets/{uid} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     // Study Groups: structured access rules
     match /studyGroups/{groupId} {
       function isOwner() { return isSignedIn() && resource.data.createdBy == request.auth.uid; }

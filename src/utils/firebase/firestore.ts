@@ -1148,6 +1148,19 @@ export const saveTimetable = async (timetableData: Record<string, ClassItem[]>) 
       timetable: timetableData,
       lastUpdated: serverTimestamp()
     });
+    // Mirror to a public-readable snapshot used by the iOS / Android
+    // home-screen widgets (no auth = no token refresh issues for widgets).
+    // If the rule doesn't allow the write (e.g. older deployment), silently
+    // swallow the error — the main timetable save already succeeded.
+    try {
+      await setDoc(doc(db, 'publicWidgets', userId), {
+        uid: userId,
+        timetable: timetableData,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (mirrorErr) {
+      console.warn('publicWidgets mirror skipped:', (mirrorErr as Error)?.message);
+    }
     console.log('Timetable saved successfully');
   } catch (error) {
     console.error('Error saving timetable:', error);

@@ -6,6 +6,7 @@ import { AboutPage } from './components/AboutPage';
 import { DiscoverPage } from './components/DiscoverPage';
 import { FriendProfilePage } from './components/FriendProfilePage';
 import { TimetablePage } from './components/TimetablePage';
+import { TimetableWidget } from './components/TimetableWidget';
 import { MessagesPage } from './components/MessagesPage';
 import { Navigation } from './components/Navigation';
 import { auth, isFirebaseConfigured } from './utils/firebase/client';
@@ -14,6 +15,12 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { initializeE2EE } from './utils/crypto';
 
 export default function App() {
+  // Standalone widget route — short-circuits the main app shell.
+  // Used for PWA home-screen shortcut, iframe embeds, and mobile widget apps.
+  if (typeof window !== 'undefined' && window.location.pathname.replace(/\/$/, '') === '/widget') {
+    return <TimetableWidget />;
+  }
+
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [currentUser, setCurrentUser] = useState<any>(null);
