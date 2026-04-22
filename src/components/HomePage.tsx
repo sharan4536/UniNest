@@ -102,6 +102,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
 
   const myPhoto = currentUser?.photoURL || (auth.currentUser as any)?.photoURL || undefined;
   const myInitial = (firstName.charAt(0) || 'U').toUpperCase();
+  // Derived after VIBE_OPTIONS is declared below (see useMemo)
 
   useEffect(() => {
     const loadMap = async () => {
@@ -149,6 +150,11 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
     { id: 'social', label: 'Social', emoji: '👥' },
     { id: 'music', label: 'Music', emoji: '🎧' },
   ] as const;
+
+  const currentVibeEmoji = useMemo(
+    () => VIBE_OPTIONS.find((v) => v.id === currentVibe)?.emoji,
+    [currentVibe]
+  );
 
   // "Campus is buzzing" welcome card — auto-hide after 7s
   const [buzzVisible, setBuzzVisible] = useState(true);
@@ -242,13 +248,13 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
           {myPhoto ? (
             <Marker
               position={[mapCenter.lat, mapCenter.lng]}
-              icon={createMyAvatarIcon(myPhoto)}
+              icon={createMyAvatarIcon(myPhoto, currentVibeEmoji)}
               eventHandlers={{ click: () => onNavigate?.('profile') }}
             />
           ) : (
             <Marker
               position={[mapCenter.lat, mapCenter.lng]}
-              icon={createMyInitialIcon(myInitial)}
+              icon={createMyInitialIcon(myInitial, currentVibeEmoji)}
               eventHandlers={{ click: () => onNavigate?.('profile') }}
             />
           )}
@@ -540,16 +546,22 @@ function createCheckinIcon(location: string) {
   });
 }
 
-function createMyAvatarIcon(image: string) {
+function createMyAvatarIcon(image: string, vibeEmoji?: string) {
   // Current user's location marker — their photo with a bright sky ring + pulse halo
   const safeUrl = image.replace(/"/g, '&quot;');
+  const badge = vibeEmoji
+    ? `<div style="position:absolute;right:-4px;bottom:-4px;width:22px;height:22px;border-radius:9999px;background:white;border:2px solid #0ea5e9;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;box-shadow:0 4px 10px rgba(14,165,233,0.25);">${vibeEmoji}</div>`
+    : '';
   return L.divIcon({
     className: 'campus-me-marker',
     html: `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-10px);">
         <div style="position:absolute;inset:-6px;border-radius:9999px;background:rgba(56,189,248,0.35);animation:campusMePulse 2s ease-out infinite;"></div>
-        <div style="position:relative;width:52px;height:52px;border-radius:9999px;overflow:hidden;border:3px solid white;box-shadow:0 0 0 3px #0ea5e9,0 18px 40px rgba(0,84,127,0.22);background:white;">
-          <img src="${safeUrl}" alt="" style="width:100%;height:100%;object-fit:cover;" />
+        <div style="position:relative;width:52px;height:52px;border-radius:9999px;overflow:visible;">
+          <div style="width:52px;height:52px;border-radius:9999px;overflow:hidden;border:3px solid white;box-shadow:0 0 0 3px #0ea5e9,0 18px 40px rgba(0,84,127,0.22);background:white;">
+            <img src="${safeUrl}" alt="" style="width:100%;height:100%;object-fit:cover;" />
+          </div>
+          ${badge}
         </div>
       </div>
     `,
@@ -558,15 +570,21 @@ function createMyAvatarIcon(image: string) {
   });
 }
 
-function createMyInitialIcon(initial: string) {
+function createMyInitialIcon(initial: string, vibeEmoji?: string) {
   // Fallback when user has no photo uploaded yet
+  const badge = vibeEmoji
+    ? `<div style="position:absolute;right:-4px;bottom:-4px;width:22px;height:22px;border-radius:9999px;background:white;border:2px solid #0ea5e9;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;box-shadow:0 4px 10px rgba(14,165,233,0.25);">${vibeEmoji}</div>`
+    : '';
   return L.divIcon({
     className: 'campus-me-marker',
     html: `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-10px);">
         <div style="position:absolute;inset:-6px;border-radius:9999px;background:rgba(56,189,248,0.35);animation:campusMePulse 2s ease-out infinite;"></div>
-        <div style="position:relative;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:9999px;border:3px solid white;box-shadow:0 0 0 3px #0ea5e9,0 18px 40px rgba(0,84,127,0.22);background:linear-gradient(135deg,#0ea5e9,#7dd3fc);color:white;font-weight:800;font-size:18px;font-family:'Plus Jakarta Sans',sans-serif;">
-          ${initial}
+        <div style="position:relative;width:52px;height:52px;">
+          <div style="display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:9999px;border:3px solid white;box-shadow:0 0 0 3px #0ea5e9,0 18px 40px rgba(0,84,127,0.22);background:linear-gradient(135deg,#0ea5e9,#7dd3fc);color:white;font-weight:800;font-size:18px;font-family:'Plus Jakarta Sans',sans-serif;">
+            ${initial}
+          </div>
+          ${badge}
         </div>
       </div>
     `,

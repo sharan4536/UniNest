@@ -23,6 +23,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { updateUserProfile, updateProfile, getProfile, getUserStatus, getFriends, UserProfile, loadTimetable, type ClassItem } from '../utils/firebase/firestore';
 import { PrivacySettingsPage } from './PrivacySettingsPage';
 import { ImageCropper } from './ImageCropper';
+import { FindFreeTimeButton } from './FreeTimeFinder';
+import { WEEKDAYS, getTodayKey, type DayKey } from '../utils/scheduleCompare';
 
 type CurrentUser = {
   id?: string;
@@ -430,6 +432,43 @@ export function ProfilePage({
       .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time));
   }, [timetable]);
 
+  // Group schedule items by weekday key (MON-FRI) for the Schedule tab.
+  // Sort each day's classes by start time (minutes since midnight).
+  const scheduleByDay = useMemo(() => {
+    const parseStart = (t: string): number => {
+      if (!t) return 24 * 60;
+      const [maybeTime] = t.split('-').map((s) => s.trim());
+      const m12 = maybeTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (m12) {
+        let hh = parseInt(m12[1], 10);
+        const mm = parseInt(m12[2], 10);
+        const ap = m12[3].toUpperCase();
+        if (ap === 'AM' && hh === 12) hh = 0;
+        if (ap === 'PM' && hh !== 12) hh += 12;
+        return hh * 60 + mm;
+      }
+      const m24 = maybeTime.match(/^(\d{1,2}):(\d{2})$/);
+      if (m24) return parseInt(m24[1], 10) * 60 + parseInt(m24[2], 10);
+      return 24 * 60;
+    };
+
+    const grouped = {} as Record<DayKey, typeof scheduleItems>;
+    for (const day of WEEKDAYS) grouped[day] = [];
+    for (const item of scheduleItems) {
+      const key = (item.day || '').slice(0, 3).toUpperCase() as DayKey;
+      if (grouped[key]) grouped[key].push(item);
+    }
+    for (const day of WEEKDAYS) {
+      grouped[day] = [...grouped[day]].sort((a, b) => parseStart(a.time) - parseStart(b.time));
+    }
+    return grouped;
+  }, [scheduleItems]);
+
+  const dayFullLabel: Record<DayKey, string> = {
+    MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday',
+  };
+  const todayKey = getTodayKey();
+
   if (showPrivacySettings) {
     return (
       <div className="absolute inset-0 z-50 overflow-y-auto bg-white">
@@ -585,7 +624,9 @@ export function ProfilePage({
 
           <section className="mt-6">
             {activeTab === 'schedule' && (
-              <div className="space-y-5">
+              <div className="space-y-4">
+                <FindFreeTimeButton />
+
                 {timetableLoading ? (
                   <p className="text-sm text-slate-500">Loading your timetable...</p>
                 ) : scheduleItems.length === 0 ? (
@@ -594,29 +635,59 @@ export function ProfilePage({
                     <p className="mt-1 text-xs text-slate-500">Upload or create your timetable to see it here.</p>
                   </div>
                 ) : (
-                  scheduleItems.map((item, index) => (
-                    <div key={item.key} className="relative flex gap-4">
-                      {index < scheduleItems.length - 1 && (
-                        <div className="absolute bottom-[-20px] left-[9px] top-6 w-[2px] bg-sky-400/20" />
-                      )}
-                      <div className="z-10 mt-1 h-5 w-5 rounded-full border-[3px] border-white bg-sky-400 shadow-sm" />
-                      <div className="flex-1 pb-2">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <h3 className="text-base font-bold text-slate-800" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                              {item.title}
+                  <div className="space-y-4">
+                    {WEEKDAYS.map((day) => {
+                      const items = scheduleByDay[day];
+                      const isToday = todayKey === day;
+                      return (
+                        <div
+                          key={day}
+                          data-testid={`profile-schedule-day-${day}`}
+                          className={`rounded-[1.25rem] p-4 ring-1 transition ${
+                            isToday
+                              ? 'bg-white ring-sky-400/40 shadow-[0_4px_6px_-4px_rgba(56,189,248,0.2)]'
+                              : 'bg-white/60 ring-sky-400/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h3
+                              className={`text-sm font-extrabold tracking-tight ${isToday ? 'text-sky-600' : 'text-slate-800'}`}
+                              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                              {dayFullLabel[day]}
+                              {isToday && (
+                                <span className="ml-2 text-[9px] font-bold uppercase tracking-widest text-sky-500 align-middle">Today</span>
+                              )}
                             </h3>
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-500">{item.day}</p>
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              {items.length} {items.length === 1 ? 'class' : 'classes'}
+                            </span>
                           </div>
+                          {items.length === 0 ? (
+                            <p className="text-xs text-slate-400 italic">Nothing scheduled.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {items.map((item) => (
+                                <div key={item.key} className="relative flex gap-3">
+                                  <div className="mt-1 h-4 w-4 shrink-0 rounded-full border-[3px] border-white bg-sky-400 shadow-sm" />
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-bold text-slate-800 leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                                      {item.title}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">{item.place}</p>
+                                    <div className="mt-1 flex items-center gap-1.5 text-slate-500">
+                                      <Clock3 className="h-3 w-3" />
+                                      <span className="text-[11px] font-medium">{item.time}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <p className="mt-0.5 text-sm text-slate-500">{item.place}</p>
-                        <div className="mt-1 flex items-center gap-1.5 text-slate-500">
-                          <Clock3 className="h-3.5 w-3.5" />
-                          <span className="text-xs font-medium">{item.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}
