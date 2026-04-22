@@ -753,7 +753,31 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
             </div>
           </div>
 
-          {/* Who's Around (Check-ins) */}
+
+          {/* Active Pulses */}
+          <div>
+            <h2 className="os-list-label flex justify-between items-center">
+              <span>Active Pulses</span>
+              <span className="text-xs font-normal text-slate-400">
+                {pulses.length > 0 ? `${pulses.length} live` : 'None'}
+              </span>
+            </h2>
+            <div className="os-list-group">
+              {pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).length === 0 ? (
+                <div className="px-4 py-8 text-center text-slate-400">
+                  <p className="text-[15px]">No active pulses right now.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 p-3">
+                  {pulses.filter(p => !ghostMode && p.createdBy !== auth.currentUser?.uid).map(pulse => (
+                    <PulseCard key={pulse.id} pulse={pulse} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+                    {/* Who's Around (Check-ins) */}
           <div>
             <h2 className="os-list-label flex justify-between items-center">
               <span>Who's Around</span>
