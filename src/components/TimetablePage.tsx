@@ -41,7 +41,9 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
   const [timetable, setTimetable] = useState<Record<string, ClassItem[]>>({});
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [selectedClassDay, setSelectedClassDay] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+  const [editingClass, setEditingClass] = useState<{ originalDay: string; id: number } | null>(null);
   const [sosSheetOpen, setSosSheetOpen] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [importText, setImportText] = useState<string>('');
@@ -223,6 +225,11 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     setTimetable(updatedTimetable);
     await saveTimetable(updatedTimetable);
 
+    resetClassForm();
+    setIsDialogOpen(false);
+  };
+
+  const resetClassForm = () => {
     setNewClass({
       course: '',
       title: '',
@@ -232,6 +239,51 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
       academicBlock: '',
       day: 'Monday'
     });
+    setEditingClass(null);
+  };
+
+  const handleEditClass = (day: string, cls: ClassItem) => {
+    setEditingClass({ originalDay: day, id: cls.id });
+    setNewClass({
+      course: cls.course || '',
+      title: cls.title || '',
+      time: cls.time || '9:00 AM',
+      duration: Number(cls.duration) || 1,
+      location: cls.location || '',
+      academicBlock: cls.academicBlock || '',
+      day: day,
+    });
+    setSelectedClass(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleUpdateClass = async () => {
+    if (!editingClass) return;
+    const { originalDay, id } = editingClass;
+    const updatedClass: ClassItem = {
+      id,
+      course: newClass.course,
+      title: newClass.title,
+      time: newClass.time,
+      duration: Number(newClass.duration),
+      location: newClass.location,
+      academicBlock: newClass.academicBlock,
+    };
+
+    const updatedTimetable: Record<string, ClassItem[]> = { ...timetable };
+    // Remove from original day
+    updatedTimetable[originalDay] = (updatedTimetable[originalDay] || []).filter(
+      (c) => c.id !== id
+    );
+    // Add to new day (which may be same as original)
+    const targetDay = newClass.day;
+    updatedTimetable[targetDay] = [...(updatedTimetable[targetDay] || []), updatedClass];
+
+    setTimetable(updatedTimetable);
+    await saveTimetable(updatedTimetable);
+    toast.success('Class updated', { description: `${updatedClass.course || 'Class'} saved to ${targetDay}.` });
+
+    resetClassForm();
     setIsDialogOpen(false);
   };
 
@@ -390,7 +442,14 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                       style={{
                         height: `${cls.duration * 64 - 8}px`, // Adjusted height calculation
                       }}
-                      onClick={() => setSelectedClass(cls)}
+                      onClick={() => {
+                        if (isEditing) {
+                          handleEditClass(day, cls);
+                        } else {
+                          setSelectedClass(cls);
+                          setSelectedClassDay(day);
+                        }
+                      }}
                     >
                       <div className="font-bold text-xs truncate leading-tight">{cls.course}</div>
                       <div className="text-[10px] opacity-90 truncate leading-tight mt-0.5">{cls.title}</div>
@@ -436,7 +495,10 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                   <div
                     key={cls.id}
                     className={`p-4 rounded-xl border flex justify-between items-center cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all ${getClassColor(cls.course)}`}
-                    onClick={() => setSelectedClass(cls)}
+                    onClick={() => {
+                      setSelectedClass(cls);
+                      setSelectedClassDay(day);
+                    }}
                   >
                     <div>
                       <div className="font-bold text-base flex items-center gap-2">
@@ -450,17 +512,31 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                       <div className="text-xs opacity-60 mt-1">{cls.academicBlock || cls.professor}</div>
                     </div>
                     {isEditing && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 border-none shadow-none"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          handleDeleteClass(day, cls.id);
-                        }}
-                      >
-                        Delete
-                      </Button>
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          className="h-8 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-200 border-none shadow-none"
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            handleEditClass(day, cls);
+                          }}
+                          data-testid={`edit-class-list-${cls.id}`}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 border-none shadow-none"
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            handleDeleteClass(day, cls.id);
+                          }}
+                          data-testid={`delete-class-list-${cls.id}`}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -611,10 +687,15 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
           />
 
           {/* Add Class Dialog */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="glass-panel border-white/60 p-6 rounded-3xl shadow-2xl max-w-lg">
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetClassForm();
+          }}>
+            <DialogContent className="glass-panel border-white/60 p-6 rounded-3xl shadow-2xl max-w-lg" data-testid="class-form-dialog">
               <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-slate-800">Add New Class</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-slate-800">
+                  {editingClass ? 'Edit Class' : 'Add New Class'}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-5 mt-2">
                 <div className="grid grid-cols-2 gap-4">
@@ -659,7 +740,13 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                     <Input id="academicBlock" placeholder="Block A" value={newClass.academicBlock} onChange={(e) => setNewClass({ ...newClass, academicBlock: e.target.value })} className="rounded-xl bg-slate-50 border-slate-200 focus:bg-white" />
                   </div>
                 </div>
-                <Button onClick={handleAddClass} className="w-full h-11 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-200/50">Add Class Project</Button>
+                <Button
+                  onClick={editingClass ? handleUpdateClass : handleAddClass}
+                  className="w-full h-11 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-200/50"
+                  data-testid="class-form-submit-btn"
+                >
+                  {editingClass ? 'Save Changes' : 'Add Class Project'}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -804,8 +891,16 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
 
                         <button
                           type="button"
-                          onClick={() => setSelectedClass(cls)}
+                          onClick={() => {
+                            if (isEditing) {
+                              handleEditClass(selectedDay, cls);
+                            } else {
+                              setSelectedClass(cls);
+                              setSelectedClassDay(selectedDay);
+                            }
+                          }}
                           className={`w-full rounded-[32px] p-6 text-left shadow-[0px_8px_30px_0px_rgba(0,0,0,0.02)] outline outline-1 outline-white/50 ${variant.card}`}
+                          data-testid={`timeline-class-${cls.id}`}
                         >
                           <div className="space-y-2">
                             <div className="text-xl font-bold leading-7 text-gray-800">{cls.course || cls.title}</div>
@@ -863,8 +958,11 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
 
       {/* Class Details Dialog */}
       {selectedClass && (
-        <Dialog open={!!selectedClass} onOpenChange={() => setSelectedClass(null)}>
-          <DialogContent className="glass-panel border-white/60 p-0 overflow-hidden shadow-2xl rounded-3xl max-w-sm">
+        <Dialog open={!!selectedClass} onOpenChange={() => {
+          setSelectedClass(null);
+          setSelectedClassDay(null);
+        }}>
+          <DialogContent className="glass-panel border-white/60 p-0 overflow-hidden shadow-2xl rounded-3xl max-w-sm" data-testid="class-details-dialog">
             <div className={`h-24 ${getClassColor(selectedClass.course).split(' ')[0]} w-full`}></div>
             <div className="px-6 pb-6 -mt-10 relative">
               <div className="bg-white rounded-2xl shadow-lg p-4 border border-slate-100 mb-4 text-center">
@@ -896,8 +994,25 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button variant="ghost" onClick={() => setSelectedClass(null)} className="flex-1 rounded-xl">Close</Button>
-                  <Button className="flex-1 rounded-xl bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-200/50">Find Friends</Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setSelectedClass(null); setSelectedClassDay(null); }}
+                    className="flex-1 rounded-xl"
+                    data-testid="class-details-close-btn"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (selectedClass && selectedClassDay) {
+                        handleEditClass(selectedClassDay, selectedClass);
+                      }
+                    }}
+                    className="flex-1 rounded-xl bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-200/50"
+                    data-testid="class-details-edit-btn"
+                  >
+                    <Edit className="h-4 w-4 mr-1.5" /> Edit Class
+                  </Button>
                 </div>
               </div>
             </div>
