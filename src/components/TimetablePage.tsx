@@ -73,6 +73,13 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
   });
   const [activeTab, setActiveTab] = useState<'grid' | 'list'>('grid');
   const [selectedDay, setSelectedDay] = useState<string>('Monday');
+  const [now, setNow] = useState<Date>(new Date());
+
+  // Tick every 30s to keep the "Now / Next" banner fresh.
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   /**
    * Unified parser: tries the FFCS parser first; falls back to the legacy
@@ -319,6 +326,27 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
 
   const getTimeSlotIndex = (time: string): number => {
     return timeSlots.indexOf(time);
+  };
+
+  /**
+   * Parse any class-time string into minutes-since-midnight.
+   * Supports "9:00 AM", "03:51 PM", "15:51", "3:51PM" etc.
+   * Returns 24*60 (end-of-day) for unparseable values so they sort last.
+   */
+  const parseTimeToMinutes = (t?: string): number => {
+    if (!t) return 24 * 60;
+    const s = t.trim().toUpperCase();
+    const m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+    if (!m) return 24 * 60;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const ampm = m[3];
+    if (ampm === 'AM') {
+      if (h === 12) h = 0;
+    } else if (ampm === 'PM') {
+      if (h !== 12) h += 12;
+    }
+    return h * 60 + min;
   };
 
   const getClassColor = (course: string): string => {
@@ -578,8 +606,53 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
   ));
 
   const selectedDayClasses = [...(timetable[selectedDay] || [])].sort(
-    (a, b) => getTimeSlotIndex(a.time) - getTimeSlotIndex(b.time)
+    (a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)
   );
+
+  // -------------------------------------------------------------------------
+  // Live "Now / Next" banner — computed from today's real classes
+  // -------------------------------------------------------------------------
+  const { ongoingClass, nextClass, todayName } = useMemo(() => {
+    const dayIndex = now.getDay();
+    const dayNameMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayFull = dayNameMap[dayIndex];
+    const todaysClasses = [...((timetable[todayFull] as ClassItem[] | undefined) || [])].sort(
+      (a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)
+    );
+    const minutesNow = now.getHours() * 60 + now.getMinutes();
+
+    let ongoing: ClassItem | null = null;
+    let upNext: ClassItem | null = null;
+
+    for (const c of todaysClasses) {
+      const start = parseTimeToMinutes(c.time);
+      const end = start + Math.round((Number(c.duration) || 1) * 60);
+      if (minutesNow >= start && minutesNow < end) {
+        ongoing = c;
+      } else if (start > minutesNow && !upNext) {
+        upNext = c;
+      }
+    }
+    return { ongoingClass: ongoing, nextClass: upNext, todayName: todayFull };
+  }, [timetable, now]);
+
+  const formatClassTimeRange = (cls: ClassItem): string => {
+    const startMin = parseTimeToMinutes(cls.time);
+    const endMin = startMin + Math.round((Number(cls.duration) || 1) * 60);
+    const fmt = (m: number) => {
+      const h24 = Math.floor(m / 60);
+      const mm = m % 60;
+      const ampm = h24 >= 12 ? 'PM' : 'AM';
+      let h = h24 % 12;
+      if (h === 0) h = 12;
+      return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${ampm}`;
+    };
+    return `${fmt(startMin)} – ${fmt(endMin)}`;
+  };
+
+  const minutesUntilNext = (cls: ClassItem): number => {
+    return parseTimeToMinutes(cls.time) - (now.getHours() * 60 + now.getMinutes());
+  };
 
   const weekDates = useMemo(() => {
     const now = new Date();
@@ -603,7 +676,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     const source = `${cls.title} ${cls.course}`.toLowerCase();
     if (source.includes('lab') || source.includes('workshop')) {
       return {
-        label: 'Workshop',
+        label: 'Lab',
         chip: 'bg-slate-300 text-slate-700',
         activeDot: 'bg-slate-400',
         card: 'bg-slate-100/80',
@@ -642,6 +715,94 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
             one session at a time.
           </div>
         </div>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Live Now / Next Banner                                             */}
+        {/* ------------------------------------------------------------------ */}
+        {(ongoingClass || nextClass) && (
+          <div className="w-full max-w-2xl" data-testid="now-next-banner">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* NOW card */}
+              <div
+                className={`relative overflow-hidden rounded-3xl p-5 text-white shadow-[0_8px_30px_-6px_rgba(2,132,199,0.45)] ${
+                  ongoingClass
+                    ? 'bg-gradient-to-br from-sky-600 via-sky-500 to-cyan-500'
+                    : 'bg-gradient-to-br from-slate-300 to-slate-200 text-slate-500'
+                }`}
+                data-testid="now-card"
+              >
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-90">
+                  <span className={`inline-block h-2 w-2 rounded-full ${ongoingClass ? 'bg-white animate-pulse' : 'bg-slate-400'}`} />
+                  Happening now · {todayName}
+                </div>
+                {ongoingClass ? (
+                  <div className="mt-3 space-y-1">
+                    <div className="text-xl font-extrabold leading-7" data-testid="now-course">
+                      {ongoingClass.course || ongoingClass.title}
+                    </div>
+                    <div className="text-sm opacity-90" data-testid="now-title">
+                      {ongoingClass.title && ongoingClass.title !== ongoingClass.course ? ongoingClass.title : ''}
+                    </div>
+                    <div className="mt-2 inline-flex items-center gap-3 text-xs">
+                      <span className="rounded-full bg-white/20 px-3 py-1 font-semibold backdrop-blur-sm">
+                        {formatClassTimeRange(ongoingClass)}
+                      </span>
+                      {ongoingClass.location && (
+                        <span className="inline-flex items-center gap-1 opacity-90">
+                          <MapPin className="h-3 w-3" /> {ongoingClass.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm font-medium">
+                    No class in progress — enjoy the break.
+                  </div>
+                )}
+              </div>
+
+              {/* NEXT card */}
+              <div
+                className={`relative overflow-hidden rounded-3xl border p-5 shadow-[0_8px_30px_-6px_rgba(2,132,199,0.15)] ${
+                  nextClass ? 'border-sky-200 bg-white' : 'border-slate-200 bg-slate-50 text-slate-500'
+                }`}
+                data-testid="next-card"
+              >
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-700">
+                  <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+                  Up next
+                </div>
+                {nextClass ? (
+                  <div className="mt-3 space-y-1">
+                    <div className="text-xl font-extrabold leading-7 text-gray-800" data-testid="next-course">
+                      {nextClass.course || nextClass.title}
+                    </div>
+                    <div className="text-sm text-zinc-600" data-testid="next-title">
+                      {nextClass.title && nextClass.title !== nextClass.course ? nextClass.title : ''}
+                    </div>
+                    <div className="mt-2 inline-flex items-center gap-3 text-xs text-zinc-700">
+                      <span className="rounded-full bg-sky-100 px-3 py-1 font-semibold text-sky-700">
+                        in {minutesUntilNext(nextClass) >= 60
+                          ? `${Math.floor(minutesUntilNext(nextClass) / 60)}h ${minutesUntilNext(nextClass) % 60}m`
+                          : `${minutesUntilNext(nextClass)}m`}
+                      </span>
+                      <span className="text-zinc-500">{formatClassTimeRange(nextClass)}</span>
+                      {nextClass.location && (
+                        <span className="inline-flex items-center gap-1 text-zinc-500">
+                          <MapPin className="h-3 w-3" /> {nextClass.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm font-medium">
+                    {ongoingClass ? 'Last class of the day.' : 'Nothing scheduled — you\'re all done!'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="w-full max-w-md">
           <div className="flex items-center gap-4 overflow-x-auto pb-2">
