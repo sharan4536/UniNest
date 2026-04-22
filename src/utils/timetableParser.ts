@@ -5,6 +5,10 @@ export type ParsedClass = {
   courseCode: string;
   classType: 'Theory' | 'Lab';
   location?: string;
+  // Optional metadata populated by the FFCS parser (back-compat: other callers can ignore)
+  rawType?: string;        // ETH | TH | ELA | ...
+  courseName?: string;     // Readable name e.g. "Database Systems"
+  slots?: string[];        // Merged slot ids e.g. ["L33", "L34"]
 };
 
 // Regex patterns for the new format

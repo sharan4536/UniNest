@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { extractTextFromPDF } from '../utils/pdfParser';
 import { extractTextFromImage } from '../utils/imageParser';
 import { parseTimetable, type ParsedClass } from '../utils/timetableParser';
+import { parseFFCSTimetable, ffcsToParsedClasses, formatTimeRange, type FFCSTimetable } from '../utils/ffcsParser';
 import { saveTimetable as saveUserTimetable, loadTimetable as loadUserTimetable, type ClassItem, createSOSAlert } from '../utils/firebase/firestore';
 import { StudySosSheet } from './StudySosSheet';
 
@@ -48,6 +49,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [importText, setImportText] = useState<string>('');
   const [imported, setImported] = useState<ParsedClass[]>([]);
+  const [ffcsPreview, setFfcsPreview] = useState<FFCSTimetable>({});
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [lastImportIds, setLastImportIds] = useState<Array<{ day: string; id: number }>>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -71,6 +73,24 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
   });
   const [activeTab, setActiveTab] = useState<'grid' | 'list'>('grid');
   const [selectedDay, setSelectedDay] = useState<string>('Monday');
+
+  /**
+   * Unified parser: tries the FFCS parser first; falls back to the legacy
+   * column-based parser if nothing was extracted. Returns the ParsedClass[]
+   * consumed by the existing save pipeline and also updates the rich
+   * FFCS preview state for UI rendering.
+   */
+  const parseAndPreview = (rawText: string): ParsedClass[] => {
+    const tt = parseFFCSTimetable(rawText);
+    const ffcsResults = ffcsToParsedClasses(tt);
+    if (ffcsResults.length > 0) {
+      setFfcsPreview(tt);
+      return ffcsResults;
+    }
+    // Fallback — legacy column-based parser for non-FFCS formats
+    setFfcsPreview({});
+    return parseTimetable(rawText);
+  };
 
   const uploadTimetableFile = async (file: File) => {
     setIsParsingFile(true);
@@ -122,7 +142,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     try {
       toast.info("Extracting text...", { description: `Parsing PDF locally: ${file.name}` });
       const rawText = await extractTextFromPDF(file);
-      const results = parseTimetable(rawText);
+      const results = parseAndPreview(rawText);
 
       if (results.length > 0) {
         setImported(results);
@@ -144,7 +164,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
     try {
       toast.info("Analyzing image...", { description: `Running OCR on: ${file.name}` });
       const rawText = await extractTextFromImage(file);
-      const results = parseTimetable(rawText);
+      const results = parseAndPreview(rawText);
 
       if (results.length > 0) {
         setImported(results);
@@ -361,10 +381,13 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
       const dayFull = mapDayAbbrevToFull(it.day);
       const timeLabel = /[AP]M$/i.test(it.startTime) ? it.startTime : to12h(it.startTime);
       const dur = durationHours(it.startTime, it.endTime);
+      const niceTitle = it.courseName
+        ? `${it.courseName}${it.rawType ? ` – ${it.rawType}` : ''}${it.slots && it.slots.length > 1 ? ` (${it.slots.join('+')})` : ''}`
+        : it.classType;
       const entry: ClassItem = {
         id: Date.now() + Math.floor(Math.random() * 100000),
         course: it.courseCode,
-        title: it.classType,
+        title: niceTitle,
         time: timeLabel,
         duration: dur,
         location: it.location || '',
@@ -754,7 +777,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
           {/* Import Timetable Dialog */}
           <Dialog open={isImportOpen} onOpenChange={(open) => {
             setIsImportOpen(open);
-            if (!open) { setUploadFile(null); }
+            if (!open) { setUploadFile(null); setFfcsPreview({}); }
           }}>
             <DialogContent className="max-w-xl sm:max-w-2xl p-0 glass-panel border-white/60 overflow-hidden shadow-2xl rounded-3xl">
               <DialogHeader className="p-6 border-b border-gray-100/50 bg-white/40">
@@ -789,12 +812,17 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="h-8 text-xs rounded-lg" onClick={() => {
                           try {
-                            const results = parseTimetable(importText);
+                            const results = parseAndPreview(importText);
                             setImported(results);
+                            if (results.length > 0) {
+                              toast.success('Parsed', { description: `${results.length} class${results.length === 1 ? '' : 'es'} detected (merged where contiguous).` });
+                            } else {
+                              toast.warning('No classes found', { description: 'Could not detect any valid slot cells.' });
+                            }
                           } catch (err) {
                             console.error('Import failed', err);
                           }
-                        }}>Parse Text</Button>
+                        }} data-testid="parse-text-btn">Parse Text</Button>
                         {imported.length > 0 && (
                           <Button size="sm" className="h-8 text-xs rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={handleSaveImported}>
                             Save ({imported.length})
@@ -853,6 +881,54 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
                   </TabsContent>
                 </div>
               </Tabs>
+
+              {/* FFCS Parsed Preview — shared across all tabs */}
+              {Object.keys(ffcsPreview).length > 0 && (
+                <div className="px-6 pb-6" data-testid="ffcs-preview-panel">
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/40 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="text-xs font-bold uppercase tracking-wide text-sky-700">
+                        Parsed Timetable Preview
+                      </div>
+                      <Badge className="bg-sky-500 text-white border-none">
+                        {Object.values(ffcsPreview).reduce((n, a) => n + (a?.length || 0), 0)} events
+                      </Badge>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
+                      {(['MON','TUE','WED','THU','FRI','SAT','SUN'] as const).map((d) => {
+                        const events = ffcsPreview[d] || [];
+                        if (events.length === 0) return null;
+                        return (
+                          <div key={d} data-testid={`ffcs-day-${d}`}>
+                            <div className="mb-1 text-[11px] font-bold uppercase text-slate-500">{d}</div>
+                            <div className="space-y-1.5">
+                              {events.map((ev, idx) => (
+                                <div
+                                  key={`${d}-${idx}`}
+                                  className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs shadow-sm"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-semibold text-slate-800 truncate">
+                                      {ev.courseName || ev.courseCode}
+                                      <span className="ml-1 text-slate-400 font-normal">· {ev.type}</span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">
+                                      {formatTimeRange(ev.startTime, ev.endTime)} · {ev.room} · {ev.slots.join('+')}
+                                    </div>
+                                  </div>
+                                  <div className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                    {ev.kind}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
             </div>
