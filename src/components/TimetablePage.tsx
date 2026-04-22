@@ -18,6 +18,7 @@ import { extractTextFromPDF } from '../utils/pdfParser';
 import { extractTextFromImage } from '../utils/imageParser';
 import { parseTimetable, type ParsedClass } from '../utils/timetableParser';
 import { saveTimetable as saveUserTimetable, loadTimetable as loadUserTimetable, type ClassItem, createSOSAlert } from '../utils/firebase/firestore';
+import { StudySosSheet } from './StudySosSheet';
 
 const timeSlots = [
   '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
@@ -41,9 +42,7 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
-  const [sosModalOpen, setSosModalOpen] = useState(false);
-  const [sosCourse, setSosCourse] = useState("");
-  const [sosTopic, setSosTopic] = useState("");
+  const [sosSheetOpen, setSosSheetOpen] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [importText, setImportText] = useState<string>('');
   const [imported, setImported] = useState<ParsedClass[]>([]);
@@ -478,12 +477,12 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
           <p className="text-slate-500 font-medium">Manage your class schedule and study sessions</p>
         </div>
         <div className="flex w-full md:w-auto items-center justify-end gap-3">
-          <Button 
-            className="rounded-full bg-red-500 text-white hover:bg-red-600 font-bold shadow-[0_0_15px_rgba(239,68,68,0.3)] border border-red-400"
-            onClick={() => setSosModalOpen(true)}
-          >
-            🆘 Study SOS
-          </Button>
+                      <Button 
+              className="rounded-full bg-red-500 text-white hover:bg-red-600 font-bold shadow-[0_0_15px_rgba(239,68,68,0.3)] border border-red-400"
+              onClick={() => setSosSheetOpen(true)}
+            >
+              🆘 Study SOS
+            </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-slate-100/50">
@@ -507,54 +506,12 @@ export function TimetablePage({ currentUser }: { currentUser?: unknown }) {
           </DropdownMenu>
 
           {/* SOS Modal */}
-          <Dialog open={sosModalOpen} onOpenChange={setSosModalOpen}>
-            <DialogContent className="glass-panel border-red-200 p-6 rounded-3xl shadow-2xl shadow-red-500/10 max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
-                  🆘 Broadcast Study SOS
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-2">
-                <p className="text-sm text-slate-500">Need immediate help? Broadcast an SOS to friends and coursemates. (Expires in 2 hours)</p>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500">COURSE</Label>
-                  <select 
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500" 
-                    value={sosCourse} 
-                    onChange={(e) => setSosCourse(e.target.value)}
-                  >
-                    <option value="">Select a related course...</option>
-                    {userCourses.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                    <option value="General">General / Not Course Specific</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500">TOPIC (Max 80 chars)</Label>
-                  <Input 
-                    placeholder="e.g. Need help with linked lists" 
-                    maxLength={80}
-                    value={sosTopic} 
-                    onChange={(e) => setSosTopic(e.target.value)} 
-                    className="rounded-xl bg-slate-50 border-slate-200 focus:bg-white" 
-                  />
-                </div>
-                <Button 
-                  onClick={async () => {
-                    if (!sosTopic.trim() || !sosCourse) return;
-                    await createSOSAlert(sosCourse, sosTopic);
-                    setSosModalOpen(false);
-                    setSosTopic("");
-                    toast.success("SOS Broadcasted!");
-                  }} 
-                  className="w-full h-11 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg shadow-red-200/50"
-                >
-                  Confirm Broadcast
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Study SOS Sheet */}
+          <StudySosSheet 
+            open={sosSheetOpen} 
+            onOpenChange={setSosSheetOpen} 
+            userTimetable={timetable}
+          />
 
           {/* Add Class Dialog */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 
 const developers = [
   {
-    name: 'Pavan Kumar Reddy',
+    name: 'Sharan Reddy',
     role: 'Lead Developer',
     bio: 'Full-stack developer passionate about connecting students through technology.',
     skills: ['React', 'Node.js', 'Python', 'UI/UX'],
@@ -14,7 +14,7 @@ const developers = [
   },
   {
     name: 'Abhinav M',
-    role: 'Backend Developer',
+    role: 'UI/UX Developer',
     bio: 'Systems architect ensuring scalable and secure backend infrastructure.',
     skills: ['Node.js', 'FireBase'],
     github: 'abhinav',

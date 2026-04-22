@@ -211,8 +211,8 @@ export default function App() {
         onLogout={handleLogout}
         currentUser={currentUser}
       />
-      <main className="flex-1 overflow-y-auto relative bg-background">
-        <div className="w-full max-w-4xl mx-auto px-4 py-6 md:py-8 lg:px-8">
+      <main className="flex-1 overflow-y-auto relative bg-background no-scrollbar">
+        <div className="w-full max-w-4xl mx-auto px-0 md:px-8 py-0 md:py-8">
           {renderPage()}
         </div>
       </main>

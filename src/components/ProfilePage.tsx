@@ -12,6 +12,7 @@ import { auth, isFirebaseConfigured, storage } from '../utils/firebase/client';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { updateUserProfile, getUserProfile, updateProfile, getProfile, getUserStatus, getFriends, UserProfile } from '../utils/firebase/firestore';
+import { PrivacySettingsPage } from './PrivacySettingsPage';
 
 type CurrentUser = {
   id?: string;
@@ -58,14 +59,27 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
   const [friendsLoading, setFriendsLoading] = useState<boolean>(false);
   const [showFriends, setShowFriends] = useState<boolean>(false);
   const [showClubs, setShowClubs] = useState<boolean>(false);
+  const [showPrivacySettings, setShowPrivacySettings] = useState<boolean>(false);
 
   // Local Privacy State
   const [privacySettings, setPrivacySettings] = useState({
-    locationVisible: false,
-    onlineStatusVisible: false,
-    discoverVisible: false,
-    timetableVisible: false,
+    ghostMode: (() => { try { return localStorage.getItem('ghostMode') === 'on'; } catch { return false; } })(),
+    locationVisible: true,
+    onlineStatusVisible: true,
+    discoverVisible: true,
+    timetableVisible: true,
   });
+
+  // Sync ghostMode to local storage whenever it changes via privacy handling
+  useEffect(() => {
+    try {
+      if (privacySettings.ghostMode) {
+        localStorage.setItem('ghostMode', 'on');
+      } else {
+        localStorage.removeItem('ghostMode');
+      }
+    } catch (e) {}
+  }, [privacySettings.ghostMode]);
 
   // Sync profile data when currentUser changes or load from Firebase/localStorage
   useEffect(() => {
@@ -398,6 +412,10 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
     }
   };
 
+  const handlePrivacyChange = (field: keyof typeof privacySettings, value: boolean) => {
+    setPrivacySettings(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleInputChange = (field: keyof ProfileData, value: string | string[]): void => {
     setProfileData((prev: ProfileData) => ({
       ...prev,
@@ -479,83 +497,95 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
   };
 
   return (
-  return (
-    <div className="w-full max-w-2xl mx-auto space-y-8 pb-24 md:pb-8 px-2 mt-4">
-      <div className="flex flex-col px-2 animate-in fade-in">
-        <h1 className="text-[32px] font-extrabold tracking-tight text-slate-900 leading-tight">Profile</h1>
-      </div>
-
-      <div className="animate-in fade-in">
-        <div className="os-list-group p-5">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="relative inline-block">
-                <Avatar className="w-24 h-24 mx-auto shadow-sm ring-1 ring-slate-200">
-                  {profileData.photoURL ? (
-                    <AvatarImage src={profileData.photoURL} alt={profileData.name || 'Profile photo'} className="object-cover" />
-                  ) : null}
-                  <AvatarFallback className="text-3xl bg-slate-100 text-sky-600 font-bold">
-                    {profileData.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute bottom-0 right-0">
-                  <Button
-                    type="button"
-                    onClick={handlePickPhoto}
-                    size="icon"
-                    className="rounded-full w-8 h-8 bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 shadow-sm"
-                    disabled={photoUploading}
-                    title="Change Photo"
-                  >
-                    {photoUploading ? '...' : '📷'}
-                  </Button>
-                </div>
-              </div>
-
-              {photoError && (
-                <p className="text-red-500 text-[13px]">{photoError}</p>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoSelected}
-              />
-
-              <div className="space-y-1">
-                <h2 className="text-[22px] font-bold text-slate-900 tracking-tight leading-none">{profileData.name}</h2>
-                <div className="flex items-center justify-center gap-2 text-[14px] text-slate-500 font-medium">
-                  <span>{profileData.major}</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                  <span>{profileData.year}</span>
-                </div>
-              </div>
-
-              <span className={`
-                px-3 py-1 text-[13px] font-semibold rounded-full
-                ${currentStatus === 'available' ? 'bg-green-100 text-green-700' :
-                  currentStatus === 'in class' ? 'bg-amber-100 text-amber-700' :
-                    currentStatus === 'in library' ? 'bg-indigo-100 text-indigo-700' :
-                      currentStatus === 'in ground' ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-slate-100 text-slate-700'}
-              `}>
-                {currentStatus === 'available' ? '🟢 Available' :
-                  currentStatus === 'in class' ? '📚 In Class' :
-                    currentStatus === 'in library' ? '📖 In Library' :
-                      currentStatus === 'in ground' ? '⚽ In Ground' :
-                        currentStatus === 'in hostel' ? '🏠 In Hostel' : '🟢 Available'}
-              </span>
-
+    <div className="w-full max-w-2xl mx-auto pb-28 md:pb-8 animate-in fade-in bg-slate-50 min-h-screen">
+      {/* Privacy Settings Page */}
+      {showPrivacySettings && (
+        <div className="absolute inset-0 z-50 bg-white overflow-y-auto">
+          <button
+            onClick={() => setShowPrivacySettings(false)}
+            className="fixed top-4 left-4 z-50 p-2 hover:bg-gray-100 rounded-full"
+          >
+            ←
+          </button>
+          <PrivacySettingsPage />
+        </div>
+      )}
+      
+      {!showPrivacySettings && (
+      <>
+      {/* Immersive Edge-to-Edge Header */}
+      <div className="relative w-full overflow-visible mb-16 rounded-b-[2.5rem] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        {/* Colorful Gradient Cover */}
+        <div className="h-44 w-full bg-gradient-to-br from-sky-400 via-blue-400 to-indigo-400 rounded-b-[2.5rem] p-6 relative">
+          <Button
+            onClick={() => setIsEditing(!isEditing)}
+            variant="ghost"
+            className="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white font-semibold hover:bg-white/30 rounded-full h-8 px-4 text-xs shadow-sm active:scale-95 transition-transform"
+          >
+            {isEditing ? 'Done' : 'Edit'}
+          </Button>
+        </div>
+        
+        {/* Overlapping Avatar & Info */}
+        <div className="px-6 flex flex-col items-center -mt-16 pb-6 text-center space-y-3">
+          <div className="relative inline-block z-10">
+            <Avatar className="w-28 h-28 mx-auto shadow-xl ring-[6px] ring-white">
+              {profileData.photoURL ? (
+                <AvatarImage src={profileData.photoURL} alt={profileData.name || 'Profile photo'} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="text-4xl bg-slate-100 text-sky-600 font-bold">
+                {profileData.name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute bottom-0 right-0">
               <Button
-                onClick={() => setIsEditing(!isEditing)}
-                variant="ghost"
-                className="w-full bg-slate-50 text-sky-600 font-semibold hover:bg-slate-100 hover:text-sky-700 rounded-xl mt-2"
+                type="button"
+                onClick={handlePickPhoto}
+                size="icon"
+                className="rounded-full w-9 h-9 bg-slate-100 border-2 border-white text-slate-600 hover:bg-slate-200 shadow-md active:scale-90 transition-transform"
+                disabled={photoUploading}
+                title="Change Photo"
               >
-                {isEditing ? 'Cancel Editing' : 'Edit Profile'}
+                {photoUploading ? '...' : '📷'}
               </Button>
             </div>
+            {photoError && <p className="absolute -bottom-6 w-full text-center text-red-500 text-[11px]">{photoError}</p>}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSelected}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <h2 className="text-[26px] font-extrabold text-slate-900 tracking-tight leading-none">{profileData.name}</h2>
+            <div className="flex items-center justify-center gap-2 text-[14px] text-slate-500 font-medium tracking-tight">
+              <span>{profileData.major}</span>
+              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+              <span>{profileData.year}</span>
+            </div>
+          </div>
+
+          <span className={`
+            px-4 py-1.5 text-[13px] font-bold rounded-full border shadow-sm
+            ${currentStatus === 'available' ? 'bg-green-50/80 text-green-700 border-green-200' :
+              currentStatus === 'in class' ? 'bg-amber-50/80 text-amber-700 border-amber-200' :
+                currentStatus === 'in library' ? 'bg-indigo-50/80 text-indigo-700 border-indigo-200' :
+                  currentStatus === 'in ground' ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200' :
+                    'bg-slate-50/80 text-slate-700 border-slate-200'}
+          `}>
+            {currentStatus === 'available' ? '🟢 Available' :
+              currentStatus === 'in class' ? '📚 In Class' :
+                currentStatus === 'in library' ? '📖 In Library' :
+                  currentStatus === 'in ground' ? '⚽ In Ground' :
+                    currentStatus === 'in hostel' ? '🏠 In Hostel' : '🟢 Available'}
+          </span>
         </div>
       </div>
+      
+      <div className="space-y-6 px-3">
 
       {isEditing && (
         <div className="animate-in fade-in">
@@ -598,84 +628,11 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                ) : (
-                  <p className="p-3 bg-gray-50/50 rounded-xl text-foreground/90 border border-gray-100">{profileData.university}</p>
-                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="year" className="text-muted-foreground">Academic Year</Label>
-                {isEditing ? (
-                  <Select value={profileData.year} onValueChange={(v: string) => handleInputChange('year', v)}>
-                    <SelectTrigger aria-label="Select Year" className="bg-white/5 border-white/10 text-foreground">
-                      <SelectValue placeholder="Select Year" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-white/10 text-foreground">
-                      <SelectItem value="1st Year">1st Year</SelectItem>
-                      <SelectItem value="2nd Year">2nd Year</SelectItem>
-                      <SelectItem value="3rd Year">3rd Year</SelectItem>
-                      <SelectItem value="4th Year">4th Year</SelectItem>
-                      <SelectItem value="5th Year">5th Year</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="p-3 bg-gray-50/50 rounded-xl text-foreground/90 border border-gray-100">{profileData.year}</p>
-                )}
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="major" className="text-muted-foreground">Major</Label>
-                {isEditing ? (
-                  <>
-                    <Select value={profileData.major} onValueChange={(v: string) => handleInputChange('major', v)}>
-                      <SelectTrigger aria-label="Select Major" className="bg-white/5 border-white/10 text-foreground">
-                        <SelectValue placeholder="Select B.Tech Course" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-black/90 border-white/10 text-foreground">
-                        <SelectGroup>
-                          <SelectLabel>Popular B.Tech</SelectLabel>
-                          <SelectItem value="CSE">Computer Science and Engineering (CSE)</SelectItem>
-                          <SelectItem value="ECE">Electronics and Communication (ECE)</SelectItem>
-                          <SelectItem value="EEE">Electrical and Electronics (EEE)</SelectItem>
-                          <SelectItem value="MECH">Mechanical Engineering</SelectItem>
-                          <SelectItem value="CIVIL">Civil Engineering</SelectItem>
-                          <SelectItem value="CHE">Chemical Engineering</SelectItem>
-                          <SelectItem value="IT">Information Technology</SelectItem>
-                          <SelectItem value="AIML">AI & ML</SelectItem>
-                          <SelectItem value="DS">Data Science</SelectItem>
-                          <SelectItem value="BIOTECH">Biotechnology</SelectItem>
-                        </SelectGroup>
-                        <SelectGroup className="border-t border-white/10 pt-2 mt-2">
-                          <SelectItem value="OTHER">Other...</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    {profileData.major === 'OTHER' && (
-                      <div className="mt-2">
-                        <Input
-                          id="major-custom"
-                          placeholder="Enter your branch"
-                          value={majorOther}
-                          onChange={(e) => setMajorOther(e.target.value)}
-                          className="bg-white/5 border-white/10 text-foreground"
-                        />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="p-3 bg-gray-50/50 rounded-xl text-foreground/90 border border-gray-100">{profileData.major}</p>
-                )}
-              </div>
+
+
             </div>
 
-            <div className="space-y-2">
-                    <SelectTrigger className="border-none shadow-none text-[15px] focus:ring-0 text-right w-full justify-end flex-row-reverse gap-2 text-slate-900 bg-transparent">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="VIT Vellore">VIT Vellore</SelectItem>
-                    </SelectContent>
-                  </Select>
-              </div>
-            </div>
             <div className="os-list-row p-3">
               <span className="w-1/3 text-[15px] font-medium text-slate-700 px-2">Program</span>
               <div className="flex-1 flex justify-end">
@@ -769,13 +726,26 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
       )}
 
       {/* Privacy settings */}
-      <div className="animate-in fade-in">
-        <h2 className="os-list-label">Privacy & Visibility</h2>
-        <div className="os-list-group">
-          <div className="os-list-row">
-            <div className="flex flex-col">
-              <Label htmlFor="location-visibility" className="text-[15px] font-medium text-slate-800">Location Sharing</Label>
-              <span className="text-[12px] text-slate-500">Allow friends to see you on the map</span>
+      <div className="animate-in fade-in space-y-3">
+        <h2 className="os-list-label px-2">Privacy & Visibility</h2>
+        <div className="os-list-group shadow-sm">
+          <div className="os-list-row bg-white px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+            <div className="flex flex-col pr-4">
+              <Label htmlFor="ghost-mode" className="text-[16px] font-semibold text-slate-800 tracking-tight">Ghost Mode</Label>
+              <span className="text-[13px] text-slate-500 mt-0.5 leading-snug">Hide completely from the map and searches</span>
+            </div>
+            <Switch
+              id="ghost-mode"
+              checked={privacySettings.ghostMode}
+              onCheckedChange={(checked) => handlePrivacyChange('ghostMode', checked)}
+              className="data-[state=checked]:bg-emerald-500 shrink-0 shadow-sm"
+            />
+          </div>
+
+          <div className="os-list-row bg-white px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+            <div className="flex flex-col pr-4">
+              <Label htmlFor="location-visibility" className="text-[16px] font-semibold text-slate-800 tracking-tight">Location Sharing</Label>
+              <span className="text-[13px] text-slate-500 mt-0.5 leading-snug">Allow friends to see you on the map</span>
             </div>
             <Switch
               id="location-visibility"
@@ -785,10 +755,10 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
             />
           </div>
 
-          <div className="os-list-row">
-            <div className="flex flex-col">
-              <Label htmlFor="online-status" className="text-[15px] font-medium text-slate-800">Online Status</Label>
-              <span className="text-[12px] text-slate-500">Show when you are active on UniNest</span>
+          <div className="os-list-row bg-white px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+            <div className="flex flex-col pr-4">
+              <Label htmlFor="online-status" className="text-[16px] font-semibold text-slate-800 tracking-tight">Online Status</Label>
+              <span className="text-[13px] text-slate-500 mt-0.5 leading-snug">Show when you are active on UniNest</span>
             </div>
             <Switch
               id="online-status"
@@ -798,28 +768,28 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
             />
           </div>
 
-          <div className="os-list-row">
-            <div className="flex flex-col">
-              <Label htmlFor="discoverability" className="text-[15px] font-medium text-slate-800">Discoverability</Label>
-              <span className="text-[12px] text-slate-500">Appear in student searches</span>
+          <div className="os-list-row bg-white px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+            <div className="flex flex-col pr-4">
+              <Label htmlFor="discoverability" className="text-[16px] font-semibold text-slate-800 tracking-tight">Discoverability</Label>
+              <span className="text-[13px] text-slate-500 mt-0.5 leading-snug">Appear in student searches</span>
             </div>
             <Switch
               id="discoverability"
-              checked={privacySettings.discoverable}
-              onCheckedChange={(checked) => handlePrivacyChange('discoverable', checked)}
+              checked={privacySettings.discoverVisible}
+              onCheckedChange={(checked) => handlePrivacyChange('discoverVisible', checked)}
               className="data-[state=checked]:bg-sky-500"
             />
           </div>
 
-          <div className="os-list-row">
-            <div className="flex flex-col">
-              <Label htmlFor="timetable-sharing" className="text-[15px] font-medium text-slate-800">Timetable Sharing</Label>
-              <span className="text-[12px] text-slate-500">Let friends compare schedules with you</span>
+          <div className="os-list-row bg-white px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+            <div className="flex flex-col pr-4">
+              <Label htmlFor="timetable-sharing" className="text-[16px] font-semibold text-slate-800 tracking-tight">Timetable Sharing</Label>
+              <span className="text-[13px] text-slate-500 mt-0.5 leading-snug">Let friends compare schedules with you</span>
             </div>
             <Switch
               id="timetable-sharing"
-              checked={privacySettings.timetableShared}
-              onCheckedChange={(checked) => handlePrivacyChange('timetableShared', checked)}
+              checked={privacySettings.timetableVisible}
+              onCheckedChange={(checked) => handlePrivacyChange('timetableVisible', checked)}
               className="data-[state=checked]:bg-sky-500"
             />
           </div>
@@ -928,9 +898,18 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
           </div>
         </div>
       )}
+      </div>
 
       {/* About Link */}
-      <div className="mt-8 mb-4 text-center">
+      <div className="mt-8 mb-4 text-center space-y-3">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setShowPrivacySettings(true)}
+          className="block mx-auto text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors font-semibold text-[15px]"
+        >
+          🔒 Privacy & Visibility
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -940,6 +919,8 @@ export function ProfilePage({ currentUser, onProfileUpdate, goToAbout }: { curre
           ℹ️ About UniNest
         </Button>
       </div>
+      </>
+      )}
     </div>
   );
 }

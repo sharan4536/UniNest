@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { getFriendRequests, getUnreadMessagesCount } from '../utils/firebase/firestore';
+import { getFriendRequests, getUnreadMessagesCount, getUserStatus } from '../utils/firebase/firestore';
 
 type NavItem = { id: string; label: string; icon: string };
 const navigationItems: NavItem[] = [
@@ -21,6 +21,7 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
 }) {
   const [pendingRequestsCount, setPendingRequestsCount] = React.useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = React.useState(0);
+  const [userStatus, setUserStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     // Subscribe to pending friend requests
@@ -33,13 +34,27 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
       setUnreadMessagesCount(count);
     });
 
+    const fetchStatus = async () => {
+      try {
+        const s = await getUserStatus();
+        setUserStatus(s);
+      } catch (e) {}
+    };
+    fetchStatus();
+    
+    // Refresh status periodically purely for the UI indication 
+    const statusInterval = setInterval(fetchStatus, 30000);
+
     return () => {
       unsubscribeRequests && unsubscribeRequests();
       unsubscribeUnread && unsubscribeUnread();
+      clearInterval(statusInterval);
     };
   }, []);
 
-  const totalBadgeCount = unread  return (
+  const totalBadgeCount = unreadMessagesCount || 0;
+
+  return (
     <>
       {/* Desktop Navigation - App Native Left Sidebar */}
       <nav className="hidden md:flex flex-col w-64 h-full bg-white border-r border-slate-100 z-40 p-5 justify-between shrink-0 shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
@@ -109,23 +124,23 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
       </nav>
 
       {/* Mobile Navigation - Fixed Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-slate-200 pb-[env(safe-area-inset-bottom)]">
-        <div className="flex justify-around items-center px-2 h-[72px]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-[32px] border-t border-slate-200/50 pb-[env(safe-area-inset-bottom)] pb-1 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] transition-all">
+        <div className="flex justify-around items-center px-1 h-[68px]">
           {navigationItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setCurrentPage(item.id)}
-              className="flex-1 flex flex-col items-center justify-center h-full relative group space-y-1 active:opacity-60 transition-opacity"
+              className="flex-1 flex flex-col items-center justify-center h-full relative group space-y-1 active:scale-[0.92] transition-transform duration-200"
             >
-              <div className={`relative flex items-center justify-center w-12 h-8 rounded-full transition-colors duration-200 ${currentPage === item.id ? 'bg-sky-100/80' : 'bg-transparent'}`}>
-                <span className={`text-[22px] transition-transform duration-200 ${currentPage === item.id ? 'scale-110' : 'scale-100 grayscale opacity-70'}`}>
+              <div className={`relative flex items-center justify-center w-12 h-8 rounded-full transition-all duration-300 ${currentPage === item.id ? 'bg-sky-500/15' : 'bg-transparent'}`}>
+                <span className={`text-[24px] transition-all duration-300 ${currentPage === item.id ? 'scale-110' : 'scale-100 grayscale opacity-40'}`}>
                   {item.icon}
                 </span>
                 {item.id === 'messages' && totalBadgeCount > 0 && (
-                  <span className="absolute top-0 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-[2px] border-white" />
+                  <span className="absolute top-0 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white/80" />
                 )}
               </div>
-              <span className={`text-[10px] font-semibold tracking-tight transition-colors duration-200 ${currentPage === item.id ? 'text-sky-600' : 'text-slate-500'}`}>
+              <span className={`text-[10px] font-semibold tracking-wide transition-all duration-300 ${currentPage === item.id ? 'text-sky-600' : 'text-slate-400'}`}>
                 {item.label}
               </span>
             </button>
@@ -142,11 +157,16 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
         </div>
 
         <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8 rounded-full shadow-sm ring-1 ring-slate-200 active:opacity-70 transition-opacity" onClick={() => setCurrentPage('profile')}>
-            <AvatarFallback className="bg-sky-50 text-sky-600 text-xs font-bold">
-              {(currentUser?.name || currentUser?.displayName || 'U')?.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="w-8 h-8 rounded-full shadow-sm ring-1 ring-slate-200 active:opacity-70 transition-opacity" onClick={() => setCurrentPage('profile')}>
+              <AvatarFallback className="bg-sky-50 text-sky-600 text-xs font-bold">
+                {(currentUser?.name || currentUser?.displayName || 'U')?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            {userStatus === 'available' && (
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+            )}
+          </div>
         </div>
       </div>
     </>

@@ -17,7 +17,7 @@ export async function extractTextFromImage(file: File): Promise<string> {
 
         // Instead of using ret.data.text (which often mushes columns),
         // we use the word bounding boxes to reconstruct textual rows.
-        const words = ret.data.words;
+        const words = (ret.data as any).words;
         if (!words || words.length === 0) return ret.data.text;
 
         // Group words by their vertical center coordinate

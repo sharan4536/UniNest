@@ -256,7 +256,7 @@ export const AdminPanel = () => {
   const toggleSpotStatus = (id: string) => {
     setSpots(prev => prev.map(s => {
       if (s.id === id) {
-        showToast(s.isOpen ? \`\${s.name} marked as Closed\` : \`\${s.name} marked as Open\`);
+        showToast(s.isOpen ? `${s.name} marked as Closed` : `${s.name} marked as Open`);
         return { ...s, isOpen: !s.isOpen };
       }
       return s;
@@ -295,7 +295,7 @@ export const AdminPanel = () => {
             key={item.id}
             className="card-enter"
             style={{
-              animation: isReduced ? 'fadein 150ms ease forwards' : \`cardStagger 300ms ease forwards \${i * 40}ms\`,
+              animation: isReduced ? 'fadein 150ms ease forwards' : `cardStagger 300ms ease forwards ${i * 40}ms`,
               opacity: 0,
               transform: isReduced ? 'none' : 'translateY(10px)'
             }}
@@ -565,7 +565,7 @@ export const AdminPanel = () => {
                key={toast.id}
                className="bg-[#1e1e2e]/95 backdrop-blur-md px-6 py-3 rounded-full text-sm text-white font-medium shadow-2xl border border-white/10"
                style={{
-                  animation: \`toastIn \${isReduced ? '150ms ease' : '220ms cubic-bezier(0.25, 0.1, 0.25, 1)'} forwards\`,
+                  animation: `toastIn ${isReduced ? '150ms ease' : '220ms cubic-bezier(0.25, 0.1, 0.25, 1)'} forwards`,
                   opacity: 0,
                   transform: isReduced ? 'none' : 'translate(-50%, 8px)'
                }}

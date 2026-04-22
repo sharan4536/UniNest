@@ -6,12 +6,12 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { auth, isFirebaseConfigured } from '../utils/firebase/client';
-import { sendFriendRequest, UserProfile, getEnhancedFriendProfile, EnhancedFriendProfile, getProfile, getFriendTimetable, type ClassItem, getAllUsers, getFriends, CampusEvent, getUpcomingEvents, loadTimetable, seedTestEvent, createConversation, getSOSAlerts, SOSAlert, createCampusEvent } from '../utils/firebase/firestore';
+import { sendFriendRequest, UserProfile, getEnhancedFriendProfile, EnhancedFriendProfile, getProfile, getFriendTimetable, type ClassItem, getAllUsers, getFriends, CampusEvent, getUpcomingEvents, loadTimetable, seedTestEvent, createConversation, getSOSAlerts, SOSAlert, createCampusEvent, getCheckIns, type CheckIn } from '../utils/firebase/firestore';
 import { EventCard } from './EventCard';
 import { EventChat } from './EventChat';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 // Supabase removed
-
+import { Search, Plus, MessageCircle, UserPlus, SlidersHorizontal } from 'lucide-react';
 type SuggestedUser = {
   id: string;
   name: string;
@@ -65,12 +65,14 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
     buddyMatchingEnabled: true,
   });
 
-  // SOS Alerts State
+  // SOS Alerts & CheckIns State
   const [sosAlerts, setSosAlerts] = useState<SOSAlert[]>([]);
+  const [checkins, setCheckins] = useState<CheckIn[]>([]);
 
   useEffect(() => {
     const unsubSOS = getSOSAlerts((alerts) => setSosAlerts(alerts));
-    return () => unsubSOS();
+    const unsubCheckins = getCheckIns((cks) => setCheckins(cks));
+    return () => { unsubSOS(); unsubCheckins(); };
   }, []);
 
   useEffect(() => {
@@ -627,258 +629,239 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
     );
   };
 
+  const isAuthorized = true; // Use real auth checks if needed
+
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
-      <div className="text-center mb-8 slide-up-fade" style={{ animationDelay: '0.1s' }}>
-        <h1 className="text-4xl font-bold text-gradient mb-2 tracking-tight">Discover Friends</h1>
-        <p className="text-slate-500 font-medium">Connect with fellow students at your university</p>
-      </div>
-
-      {/* Search Bar */}
-      <Card className="glass-card border-none slide-up-fade" style={{ animationDelay: '0.2s' }}>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <div className="relative md:col-span-2 group">
-              <Input
-                placeholder="Search by name, major, interests, courses, or clubs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 h-12 rounded-full border-slate-200 bg-slate-50/50 focus:bg-white focus:border-sky-300 focus:ring-4 focus:ring-sky-50 transition-all duration-300"
-              />
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors">
-                <span className="text-lg">🔍</span>
-              </div>
-            </div>
-            <div>
-              <div className="relative">
-                <select
-                  className="w-full h-12 pl-4 pr-10 appearance-none bg-slate-50/50 border border-slate-200 rounded-full text-slate-600 focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-50 transition-all cursor-pointer hover:bg-white"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="name">Sort by Name</option>
-                  <option value="major">Sort by Major</option>
-                  <option value="online">Sort by Online</option>
-                  <option value="sharedCourses">Sort by Courses</option>
-                  <option value="mutualClubs">Sort by Clubs</option>
-                </select>
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
-                  ⌄
-                </div>
-              </div>
-            </div>
+    <div className="bg-slate-50 font-sans text-slate-800 min-h-screen pb-32">
+      {/* Top Navigation Anchor */}
+      <header className="sticky top-0 w-full z-50 bg-slate-50/80 backdrop-blur-xl flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm">
+            <Avatar className="w-full h-full">
+               <AvatarFallback className="bg-sky-100 text-sky-700">{auth.currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
           </div>
-        </CardContent>
-      </Card>
+          <h1 className="text-xl font-extrabold tracking-tight text-indigo-600 font-sans" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>Discover</h1>
+        </div>
+        <button className="text-slate-500 hover:bg-slate-200/50 p-2 rounded-full transition-colors duration-300">
+          <Search className="w-6 h-6" />
+        </button>
+      </header>
 
-      {/* Needs Help Right Now - SOS Block */}
-      {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).length > 0 && (
-        <div className="mb-6 slide-up-fade" style={{ animationDelay: '0.25s' }}>
-          <h2 className="text-xl font-bold flex items-center gap-2 mb-3 text-red-600">
-            <span className="animate-pulse">🔴</span> Needs help right now
-          </h2>
-          <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-            {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).map(sos => {
-              const friend = friendsUsers.find(f => f.id === sos.createdBy);
-              if (!friend) return null;
-              return (
-                <div key={sos.id} className="min-w-[280px] bg-red-50 border border-red-100 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                       <Avatar className="w-8 h-8"><AvatarFallback className="bg-red-100 text-red-700 font-bold">{friend.name.charAt(0)}</AvatarFallback></Avatar>
-                       <span className="font-bold text-sm text-slate-800">{friend.name}</span>
+      <main className="pb-8">
+        {/* Search & Filters */}
+        <section className="px-6 py-4 space-y-4">
+          <div className="relative flex items-center bg-slate-100 rounded-2xl p-4 group focus-within:bg-slate-200 transition-colors duration-300">
+            <Search className="w-5 h-5 text-slate-400 mr-3" />
+            <input 
+              className="bg-transparent border-none focus:ring-0 w-full text-slate-600 placeholder:text-slate-400" 
+              placeholder="Search people, interests, courses..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              type="text" 
+            />
+          </div>
+          <div className="flex overflow-x-auto no-scrollbar gap-2 py-2">
+            {['name', 'major', 'online', 'sharedCourses', 'mutualClubs'].map(sort => {
+                const label = sort === 'sharedCourses' ? 'Courses' : sort === 'mutualClubs' ? 'Clubs' : sort.charAt(0).toUpperCase() + sort.slice(1);
+                const isActive = sortBy === sort;
+                return (
+                    <button 
+                        key={sort}
+                        onClick={() => setSortBy(sort)}
+                        className={`px-5 py-2.5 rounded-full text-sm font-semibold tracking-wide whitespace-nowrap shadow-sm transition-transform active:scale-95 ${isActive ? 'bg-indigo-600 text-white shadow-indigo-600/20' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                    >
+                        {label}
+                    </button>
+                )
+            })}
+          </div>
+        </section>
+
+        {/* SOS Section */}
+        {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).length > 0 && (
+          <section className="mt-4">
+            <div className="px-6 mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+                  Needs Help Right Now
+              </h2>
+              <span className="text-xs font-bold text-indigo-600 tracking-widest uppercase">Live</span>
+            </div>
+            <div className="flex overflow-x-auto no-scrollbar gap-4 px-6 pb-6">
+              {sosAlerts.filter(s => s.createdBy !== auth.currentUser?.uid).map(sos => {
+                const friend = friendsUsers.find(f => f.id === sos.createdBy);
+                if (!friend) return null;
+                return (
+                  <div key={sos.id} className="min-w-[280px] bg-rose-50/50 p-5 rounded-[2rem] border border-rose-500/10 relative overflow-hidden group">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar className="w-10 h-10 border-2 border-white">
+                        <AvatarFallback className="bg-rose-100 text-rose-700 font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm">{friend.name}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-rose-600 font-bold">{sos.course || 'Urgent'}</p>
+                      </div>
                     </div>
-                    <Badge variant="outline" className="bg-white text-red-600 border-red-200 shadow-sm border-dashed">SOS</Badge>
-                  </div>
-                  <div className="bg-white/60 p-3 rounded-xl border border-white">
-                    <p className="text-[11px] font-bold text-slate-500 mb-1 tracking-wider uppercase">{sos.course || 'General Help'}</p>
-                    <p className="text-sm font-medium text-slate-800">{sos.topic}</p>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md shadow-red-200/50 mt-1 transition-all"
-                    onClick={() => {
+                    <p className="text-sm font-medium mb-6 text-slate-800 leading-relaxed">{sos.topic}</p>
+                    <button 
+                      onClick={() => {
                         createConversation(friend.id).then(() => {
                            if (onMessage) onMessage();
                         });
-                    }}
-                  >
-                    🤝 Offer Help
-                  </Button>
+                      }}
+                      className="w-full py-3 bg-rose-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-rose-600/20 active:scale-[0.98] transition-transform"
+                    >
+                      Offer Help
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Nearby Now */}
+        <section className="py-4 bg-slate-100/50 mt-4">
+          <div className="px-6 mb-4">
+            <h2 className="text-lg font-extrabold tracking-tight" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>Nearby Now</h2>
+          </div>
+          <div className="flex overflow-x-auto no-scrollbar gap-6 px-6">
+            {checkins.length > 0 ? (
+              checkins.map(ci => {
+                const friend = friendsUsers.find(f => f.id === ci.createdBy);
+                if (!friend) return null;
+                return (
+                  <div key={ci.id} onClick={() => openPersonProfile(friend)} className="flex flex-col items-center gap-2 min-w-fit cursor-pointer group">
+                    <div className="relative p-1 rounded-full border-2 border-indigo-600 group-hover:scale-105 transition-transform">
+                      <Avatar className="w-16 h-16">
+                        <AvatarFallback className="bg-sky-100 text-sky-700">{friend.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-bold w-16 truncate">{friend.name}</p>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-tighter w-16 truncate">{ci.location}</p>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+               <div className="px-6 py-4 text-sm text-slate-500 italic">No one checked in nearby just yet!</div>
+            )}
+          </div>
+        </section>
+
+        {/* People You May Know */}
+        <section className="mt-8 px-6">
+          <h2 className="text-lg font-extrabold tracking-tight mb-6" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>People You May Know</h2>
+          <div className="space-y-8">
+            {sortUsers(filteredFriends).slice(0, 10).map((friend) => (
+              <div key={friend.id} className="flex items-center gap-4 cursor-pointer" onClick={() => openPersonProfile(friend)}>
+                <Avatar className="w-14 h-14 rounded-2xl"><AvatarFallback className="bg-indigo-100 text-indigo-700 text-lg font-bold">{friend.name.charAt(0)}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm truncate">{friend.name}</h3>
+                  <p className="text-xs text-slate-500 truncate">{friend.major} • {friend.year}</p>
+                  <div className="flex gap-2 mt-1">
+                    {(friend.sharedCourses && friend.sharedCourses.length > 0) && (
+                      <span className="text-[9px] font-bold text-indigo-600 tracking-widest uppercase">{friend.sharedCourses.length} shared</span>
+                    )}
+                    {getMutualClubs(friend).length > 0 && (
+                      <span className="text-[9px] font-bold text-violet-600 tracking-widest uppercase truncate max-w-[120px]">{getMutualClubs(friend)[0]}</span>
+                    )}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="slide-up-fade" style={{ animationDelay: '0.3s' }}>
-        <div className="bg-slate-100/50 p-1 rounded-full inline-flex w-full mb-6 relative">
-          <TabsList className="grid w-full grid-cols-4 bg-transparent h-12 p-0 gap-1">
-            <TabsTrigger
-              value="events"
-              className="rounded-full data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm transition-all duration-300 ease-out py-2"
-            >
-              Events 🔥
-            </TabsTrigger>
-            <TabsTrigger
-              value="friends"
-              className="rounded-full data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm transition-all duration-300 ease-out py-2"
-            >
-              Find Friends
-            </TabsTrigger>
-            <TabsTrigger
-              value="coursemates"
-              className="rounded-full data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm transition-all duration-300 ease-out py-2"
-            >
-              Buddy's
-            </TabsTrigger>
-            <TabsTrigger
-              value="mutualClubs"
-              className="rounded-full data-[state=active]:bg-white data-[state=active]:text-sky-600 data-[state=active]:shadow-sm transition-all duration-300 ease-out py-2"
-            >
-              Mutual Clubs
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="events" className="space-y-4 focus-visible:outline-none focus-visible:ring-0 mt-0">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-bold text-slate-800">What's Happening</h2>
-            <Button variant="ghost" size="sm" onClick={() => setShowCreateEventModal(true)} className="text-sm text-sky-600 hover:text-sky-700 hover:bg-sky-50 font-bold">
-              + Create Event
-            </Button>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-            {VIBE_CATEGORIES.map(vibe => (
-              <Button
-                key={vibe}
-                size="sm"
-                variant={selectedVibe === vibe ? 'default' : 'outline'}
-                className={`rounded-full shadow-sm flex-none ${selectedVibe === vibe ? 'bg-sky-500 hover:bg-sky-600 text-white border-0' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                onClick={() => setSelectedVibe(vibe)}
-              >
-                {vibe === 'All' ? '🌟 All' : vibe}
-              </Button>
+                <div className="flex gap-2">
+                  {acceptedFriendIds.has(friend.id) ? (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); createConversation(friend.id); if (onMessage) onMessage(); }}
+                      className="w-10 h-10 flex items-center justify-center bg-emerald-100 text-emerald-600 rounded-full hover:bg-emerald-200 transition-all duration-300"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                    </button>
+                  ) : sentRequests.has(friend.id) ? (
+                    <button disabled className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-400 rounded-full">
+                      ✓
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleSendRequest(friend.id); }}
+                      className="w-10 h-10 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-600 hover:text-white transition-all duration-300"
+                    >
+                      <UserPlus className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
+        </section>
 
-          {(() => {
-            const filteredEvents = selectedVibe === 'All' 
-              ? events 
-              : events.filter(e => e.vibeTags?.includes(selectedVibe));
-              
-            return filteredEvents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                {filteredEvents.map(event => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    userTimetable={myTimetable}
-                    onFindBuddy={(evt) => {
-                      setSelectedEventForBuddy(evt);
-                      setShowBuddyModal(true);
-                    }}
-                    onOpenChat={(evt) => {
-                      setSelectedEventForChat(evt);
-                      setShowChatModal(true);
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 opacity-75">
-                <div className="text-4xl mb-3">📅</div>
-                <p className="text-slate-500 font-medium">No {selectedVibe.toLowerCase()} events found.</p>
-              </div>
-            );
-          })()}
-        </TabsContent>
+        {/* What's Happening */}
+        <section className="mt-12">
+          <div className="px-6 mb-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold tracking-tight" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>What's Happening</h2>
+              <SlidersHorizontal className="w-5 h-5 text-slate-500" />
+            </div>
+            <div className="flex overflow-x-auto no-scrollbar gap-2 -mx-6 px-6">
+              {VIBE_CATEGORIES.map(vibe => (
+                <button
+                  key={vibe}
+                  onClick={() => setSelectedVibe(vibe)}
+                  className={`px-4 py-1.5 font-bold text-[10px] uppercase tracking-widest rounded-full transition-colors whitespace-nowrap ${selectedVibe === vibe ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                >
+                  {vibe === 'All' ? 'All Vibes' : vibe}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <TabsContent value="friends" className="space-y-4 focus-visible:outline-none focus-visible:ring-0 mt-0">
-          <Card className="glass-card border-none min-h-[400px]">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <span className="text-2xl">✨</span>
-                Friends ({sortUsers(filteredFriends).length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loading ? (
-                <div className="text-center py-12 flex flex-col items-center">
-                  <div className="w-8 h-8 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin mb-4"></div>
-                  <p className="text-slate-400">Loading friends...</p>
-                </div>
-              ) : sortUsers(filteredFriends).length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {sortUsers(filteredFriends).map((friend) => (
-                    <FriendCard key={friend.id} person={friend} type="friends" />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 opacity-75">
-                  <div className="text-4xl mb-3">🔍</div>
-                  <p className="text-slate-500 font-medium">{searchQuery ? 'No friends found matching your search.' : 'No friends yet.'}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          {/* Vertical Event Feed */}
+          <div className="space-y-4">
+            {(() => {
+                 const filteredEvs = selectedVibe === 'All' 
+                   ? events 
+                   : events.filter(e => e.vibeTags?.includes(selectedVibe));
+                 return filteredEvs.length > 0 ? (
+                    filteredEvs.map(event => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          userTimetable={myTimetable}
+                          onFindBuddy={(evt) => {
+                            setSelectedEventForBuddy(evt);
+                            setShowBuddyModal(true);
+                          }}
+                          onOpenChat={(evt) => {
+                            setSelectedEventForChat(evt);
+                            setShowChatModal(true);
+                          }}
+                        />
+                    ))
+                 ) : (
+                    <div className="text-center py-12 bg-slate-50 mt-2 mx-6 rounded-3xl border border-slate-100/50">
+                      <span className="text-3xl opacity-50 mb-3 block">👻</span>
+                      <p className="text-slate-500 font-semibold text-[14px]">No {selectedVibe.toLowerCase()} events coming up.</p>
+                    </div>
+                 );
+            })()}
+          </div>
+        </section>
+      </main>
 
-        <TabsContent value="coursemates" className="space-y-4 focus-visible:outline-none focus-visible:ring-0 mt-0">
-          <Card className="glass-card border-none min-h-[400px]">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <span className="text-2xl">👥</span>
-                Buddy's ({sortUsers(filteredBuddies).length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {sortUsers(filteredBuddies).length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {sortUsers(filteredBuddies).map((friend) => (
-                    <FriendCard key={friend.id} person={friend} type="buddies" />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 opacity-75">
-                  <div className="text-4xl mb-3">📚</div>
-                  <p className="text-slate-500 font-medium">{searchQuery ? 'No buddies found matching your search.' : 'No buddies found.'}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* FAB for Create Event */}
+      {isAuthorized && (
+        <button 
+          onClick={() => setShowCreateEventModal(true)}
+          className="fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-br from-indigo-600 to-indigo-400 text-white rounded-full shadow-[0_8px_24px_rgba(79,70,229,0.4)] flex items-center justify-center z-[60] active:scale-90 transition-transform duration-200"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
+      )}
 
-        <TabsContent value="mutualClubs" className="space-y-4 focus-visible:outline-none focus-visible:ring-0 mt-0">
-          <Card className="glass-card border-none min-h-[400px]">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <span className="text-2xl">🏛️</span>
-                Mutual Club Members ({sortUsers(filteredMutualClubMembers).length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {sortUsers(filteredMutualClubMembers).length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {sortUsers(filteredMutualClubMembers).map((member) => (
-                    <FriendCard key={member.id} person={member} type="mutualClubs" />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 opacity-75">
-                  <div className="text-4xl mb-3">🎯</div>
-                  <p className="text-slate-500 font-medium">{searchQuery ? 'No mutual club members match your search.' : 'No mutual club members found.'}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Enhanced Profile Dialog */}
+      {/* Modals directly migrated from old code */}
       {selectedUser && (
         <Dialog open={!!selectedUser} onOpenChange={(open: boolean) => { if (!open) { setSelectedUser(null); setEnhancedProfile(null); } }}>
           <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col glass-panel border-white/60 p-0 text-slate-800 shadow-2xl sm:rounded-3xl">
@@ -907,7 +890,6 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
         </Dialog>
       )}
 
-      {/* Buddy Finding Modal */}
       <Dialog open={showBuddyModal} onOpenChange={setShowBuddyModal}>
         <DialogContent className="max-w-md glass-panel border-white/60 p-6">
           <DialogHeader>
@@ -929,18 +911,17 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
                   <div className="flex-1">
                     <h4 className="font-bold text-slate-800">{user.name}</h4>
                     <div className="flex gap-2 text-xs mt-1">
-                      <Badge variant="secondary" className={status === 'attending' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}>
+                      <span className={status === 'attending' ? 'px-2 py-0.5 rounded-full bg-green-100 text-green-700' : 'px-2 py-0.5 rounded-full bg-slate-100 text-slate-600'}>
                         {status === 'attending' ? 'Going' : 'Interested'}
-                      </Badge>
+                      </span>
                       {isGoingAlone && (
-                        <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                        <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
                           Going Alone 🥺
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   </div>
                   <Button size="sm" className="rounded-full bg-sky-500 hover:bg-sky-600" onClick={() => {
-                    // Open chat or profile
                     setShowBuddyModal(false);
                     openPersonProfile(user);
                   }}>
@@ -952,14 +933,12 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🦗</div>
                 <p className="text-slate-500">No friends found for this event yet.</p>
-                <p className="text-xs text-slate-400 mt-2">Be the first to build the hype!</p>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Event Chat Modal */}
       <Dialog open={showChatModal} onOpenChange={setShowChatModal}>
         <DialogContent className="max-w-md glass-panel border-white/60 p-0 overflow-hidden">
           <DialogHeader className="p-4 border-b border-slate-100/50 bg-white/40 backdrop-blur-md">
@@ -995,66 +974,15 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
               <label className="text-xs font-bold text-slate-500 uppercase">Location</label>
               <Input value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} placeholder="e.g. Student Center" className="bg-slate-50 border-slate-200" />
             </div>
-            
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase">Expected Crowd Size</label>
-              <select 
-                value={newEvent.crowdSize} 
-                onChange={e => setNewEvent({...newEvent, crowdSize: e.target.value})}
-                className="w-full text-sm p-2 rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:border-sky-300"
-              >
-                <option value="Intimate">Intimate (under 50)</option>
-                <option value="Medium">Medium (50–200)</option>
-                <option value="Large">Large (200+)</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase">Vibe Tags (Multi-select)</label>
-              <div className="flex flex-wrap gap-2">
-                {VIBE_CATEGORIES.filter(v => v !== 'All').map(tag => {
-                  const isSelected = newEvent.vibeTags.includes(tag);
-                  return (
-                    <Badge 
-                      key={tag}
-                      variant="outline" 
-                      className={`cursor-pointer border-slate-200 ${isSelected ? 'bg-sky-100 text-sky-700 border-sky-300' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                      onClick={() => {
-                        const tags = isSelected ? newEvent.vibeTags.filter(t => t !== tag) : [...newEvent.vibeTags, tag];
-                        setNewEvent({...newEvent, vibeTags: tags});
-                      }}
-                    >
-                      {tag}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="space-y-0.5">
-                <label className="text-sm font-bold text-slate-700">Buddy Matching</label>
-                <p className="text-xs text-slate-500">Allow people to look for company</p>
-              </div>
-              <div className="cursor-pointer" onClick={() => setNewEvent({...newEvent, buddyMatchingEnabled: !newEvent.buddyMatchingEnabled})}>
-                <div className={`w-10 h-6 rounded-full transition-colors relative ${newEvent.buddyMatchingEnabled ? 'bg-sky-500' : 'bg-slate-300'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${newEvent.buddyMatchingEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                </div>
-              </div>
-            </div>
-
             <Button 
               className="w-full h-11 bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-lg mt-2"
               onClick={async () => {
                 if (!newEvent.title) return;
-                // Auto generate time (mocking 2 hours from now)
                 const start = new Date();
                 start.setHours(start.getHours() + 2);
                 const end = new Date(start);
                 end.setHours(end.getHours() + 2);
-
                 const { Timestamp } = await import('firebase/firestore');
-
                 await createCampusEvent({
                   title: newEvent.title,
                   description: newEvent.description,
@@ -1069,8 +997,6 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
                   endTime: Timestamp.fromDate(end),
                   tags: ["Social"],
                 });
-                
-                // Refresh events
                 const evs = await getUpcomingEvents();
                 setEvents(evs);
                 setShowCreateEventModal(false);

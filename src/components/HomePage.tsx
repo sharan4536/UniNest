@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -10,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { toast } from 'sonner';
 import { isFirebaseConfigured, auth } from '../utils/firebase/client';
 import { getFriends, updateUserProfile, getFriendLocations, updateUserLocation, getCurrentLocation, FriendLocation, updateUserStatus, getUserStatus, getUserProfile, UserProfile, createConversation, getProfile, clearUserLocation, getEnhancedFriendProfile, getPulses, Pulse, createPulse, getCheckIns, CheckIn, createCheckIn } from '../utils/firebase/firestore';
+import { PulseSheet } from './PulseSheet';
+import { PulseCard } from './PulseCard';
+import { WhosAroundPanel } from './WhosAroundPanel';
 
 // Types to avoid `never` inference
 type LocationInfo = {
@@ -52,9 +56,8 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
 
   // Pulses and Check-ins State
   const [pulses, setPulses] = useState<Pulse[]>([]);
-  const [pulseModalOpen, setPulseModalOpen] = useState(false);
-  const [pulseText, setPulseText] = useState("");
-  const [pulseDuration, setPulseDuration] = useState("30");
+  const [pulseSheetOpen, setPulseSheetOpen] = useState(false);
+  const [whosAroundOpen, setWhosAroundOpen] = useState(false);
 
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [checkinModalOpen, setCheckinModalOpen] = useState(false);
@@ -615,44 +618,33 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6 relative">
-      <div className="flex justify-between items-center px-1 pt-2 animate-in fade-in">
+    <div className="w-full max-w-2xl mx-auto space-y-6 relative pb-28">
+      <div className="flex justify-between items-center px-4 pt-6 animate-in fade-in">
         <div className="flex flex-col">
-          <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 leading-tight">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">
             Hi, {currentUser?.name?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'User'}
           </h1>
-          <p className="text-[15px] text-slate-500 font-medium">Your Campus Overview</p>
+          <p className="text-[15px] text-slate-500 font-medium tracking-tight">Your Campus Overview</p>
         </div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          onClick={toggleGhostMode}
-          className={`rounded-full transition-all duration-200 border shadow-sm px-4 h-9 text-[13px] font-semibold ${ghostMode
-            ? 'bg-slate-100 text-slate-600 border-slate-200'
-            : 'bg-white text-slate-600 border-slate-200'}`}
+          onClick={() => setCheckinModalOpen(true)}
+          className="rounded-[1.25rem] transition-all duration-300 border px-4 h-9 text-[13px] font-bold bg-white text-sky-600 border-sky-100 shadow-sm hover:scale-[0.98] hover:bg-sky-50"
         >
-          {ghostMode ? '👻 Invisible' : '👁️ Visible'}
+          📍 Check In
         </Button>
       </div>
 
-      <div className="animate-in fade-in">
+      <div className="animate-in fade-in px-3 md:px-0">
         <h2 className="os-list-label">Map & Location</h2>
-        <div className="os-list-group p-4 pb-0 mb-6">
+        <div className="os-list-group p-4 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="text-[20px]">🗺️</span>
               <span className="text-[17px] font-bold text-slate-800">Campus Map</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCheckinModalOpen(true)}
-                className="rounded-full bg-slate-50 text-sky-600 border-slate-200 hover:bg-sky-50 h-8 px-4 text-[13px] font-semibold flex-shrink-0"
-                disabled={ghostMode}
-              >
-                📍 Check In
-              </Button>
+
               <div className="flex items-center bg-slate-50 rounded-full border border-slate-200">
                 <Select value={currentStatus} onValueChange={handleStatusUpdate}>
                   <SelectTrigger
@@ -673,32 +665,16 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
             </div>
           </div>
           <div>
-            {isFirebaseConfigured && (
-              <div className="mb-4 flex gap-2">
-                {!ghostMode && locationPermission !== 'granted' && (
-                  <Button
-                    onClick={requestLocationPermission}
-                    size="sm"
-                    variant="outline"
-                    className="border-primary/50 text-primary hover:bg-primary/10"
-                  >
-                    📍 Share My Location
-                  </Button>
-                )}
-                {!ghostMode && locationPermission === 'granted' && (
-                  <Button
-                    onClick={updateCurrentLocation}
-                    size="sm"
-                    className="bg-white text-sky-600 border border-sky-100 hover:bg-sky-50 shadow-sm rounded-full"
-                  >
-                    🔄 Update Location
-                  </Button>
-                )}
-                {ghostMode && (
-                  <Badge variant="secondary" className="h-8 items-center flex bg-destructive/20 text-destructive border border-destructive/30">
-                    Invisible is ON — location hidden
-                  </Badge>
-                )}
+            {isFirebaseConfigured && locationPermission !== 'granted' && (
+              <div className="mb-4">
+                <Button
+                  onClick={requestLocationPermission}
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full border-primary/50 text-primary hover:bg-primary/10 shadow-sm"
+                >
+                  📍 Enable Location on Map
+                </Button>
               </div>
             )}
             <div className="rounded-xl overflow-hidden ring-1 ring-slate-200 shadow-sm mb-4">
@@ -839,7 +815,7 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
             setSelectedFriendProfile(null);
           }
         }}>
-          <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col glass-panel border-white/60 p-0 text-slate-800 shadow-2xl sm:rounded-3xl">
+          <DialogContent className="bottom-sheet-content flex flex-col p-0 text-slate-800">
             <DialogHeader className="flex-shrink-0 p-6 border-b border-gray-100">
               <DialogTitle className="text-xl font-bold text-foreground">
                 {selectedFriend?.name || selectedFriendProfile?.displayName || 'Friend Profile'}
@@ -997,59 +973,13 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
           </DialogContent>
         </Dialog>
 
-        {/* Pulse Modal */}
-        <Dialog open={pulseModalOpen} onOpenChange={setPulseModalOpen}>
-          <DialogContent className="sm:max-w-md glass-panel border border-white/40 rounded-[2rem] p-6 shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-rose-500">
-                Create a Pulse
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">What are you doing? (Spontaneous Hangout)</label>
-                <Input 
-                  placeholder="e.g. Grabbing coffee, who's down?" 
-                  value={pulseText}
-                  onChange={(e) => setPulseText(e.target.value)}
-                  className="rounded-xl border-slate-200 bg-white/50 focus:bg-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Duration (Auto-expires)</label>
-                <Select value={pulseDuration} onValueChange={setPulseDuration}>
-                  <SelectTrigger className="w-full rounded-xl bg-white/50">
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 Minutes</SelectItem>
-                    <SelectItem value="30">30 Minutes</SelectItem>
-                    <SelectItem value="60">1 Hour</SelectItem>
-                    <SelectItem value="120">2 Hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex gap-3 justify-end mt-2">
-              <Button variant="ghost" onClick={() => setPulseModalOpen(false)} className="rounded-xl border border-slate-200">Cancel</Button>
-              <Button 
-                onClick={async () => {
-                  if (!pulseText.trim()) return;
-                  await createPulse(pulseText, parseInt(pulseDuration));
-                  setPulseModalOpen(false);
-                  setPulseText("");
-                }} 
-                className="bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-xl font-bold hover:opacity-90 shadow-lg shadow-orange-200/50"
-              >
-                Broadcast
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* New Sheet-based Components */}
+        <PulseSheet open={pulseSheetOpen} onOpenChange={setPulseSheetOpen} />
+        <WhosAroundPanel open={whosAroundOpen} onOpenChange={setWhosAroundOpen} />
 
-        {/* Check-In Modal */}
+        {/* Check-In Modal (keep existing for now) */}
         <Dialog open={checkinModalOpen} onOpenChange={setCheckinModalOpen}>
-          <DialogContent className="sm:max-w-md glass-panel border border-white/40 rounded-[2rem] p-6 shadow-2xl">
+          <DialogContent className="bottom-sheet-content">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-sky-500">
                 Location Check-In
@@ -1112,14 +1042,21 @@ export function HomePage({ currentUser, onOpenProfile }: { currentUser?: { name?
         {/* Floating Pulse Button */}
         {!ghostMode && (
           <button 
-            onClick={() => setPulseModalOpen(true)}
+            onClick={() => setPulseSheetOpen(true)}
             className="fixed bottom-[88px] right-4 md:bottom-8 md:right-8 z-30 rounded-full pl-3 pr-4 h-12 bg-sky-500 text-white shadow-[0_4px_14px_rgba(56,189,248,0.4)] flex items-center justify-center hover:bg-sky-600 active:scale-95 transition-all font-semibold text-[15px]"
           >
-            <span className="text-xl mr-1.5">✨</span> Pulse
+            <span className="text-xl mr-1.5">➕</span> Pulse
           </button>
         )}
 
-      </div>
+        {/* Who's Around Button */}
+        <button
+          onClick={() => setWhosAroundOpen(true)}
+          className="fixed bottom-[152px] right-4 md:bottom-20 md:right-8 z-30 rounded-full pl-3 pr-4 h-12 bg-indigo-500 text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] flex items-center justify-center hover:bg-indigo-600 active:scale-95 transition-all font-semibold text-[15px]"
+        >
+          <span className="text-xl mr-1.5">👥</span> Around
+        </button>
+
     </div>
   );
 }

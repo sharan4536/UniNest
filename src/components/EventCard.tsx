@@ -171,172 +171,83 @@ export function EventCard({ event, userTimetable, onFindBuddy, onOpenChat }: Eve
         });
     };
 
-    return (
-        <Card className="modal-card border-none overflow-hidden hover:shadow-lg transition-shadow duration-300">
-            <div className="h-2 bg-gradient-to-r from-sky-400 to-indigo-500" />
-            <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <Badge variant="outline" className="mb-2 border-slate-200 text-slate-500 text-[10px] tracking-wider uppercase">
-                            {event.clubName}
-                        </Badge>
-                        <CardTitle className="text-xl font-bold text-slate-800 leading-tight">
-                            {event.title}
-                        </CardTitle>
-                    </div>
-                    <div className={`text-xs font-bold px-2 py-1 rounded-full bg-slate-50 border border-slate-100 ${heatColor}`}>
-                        {heatLevel}
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                    <span>📍 {event.location}</span>
-                    <span>•</span>
-                    <span>🕒 {formatTime(event.startTime)}</span>
-                </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-                <div className="flex gap-2 flex-wrap">
+      return (
+        <div className="relative aspect-[4/5] w-full overflow-hidden group cursor-pointer border-b border-white mb-1 rounded-none shadow-sm">
+            {/* Fallback image if none attached to event */}
+            <img 
+              src={event.tags?.includes('Music') ? "https://images.unsplash.com/photo-1540039155733-d730a53bf30c?auto=format&fit=crop&q=80&w=800" : 
+                   event.vibeTags?.includes('Study') ? "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=800" :
+                   event.vibeTags?.includes('Chill') ? "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&q=80&w=800" :
+                   "https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&q=80&w=800"} 
+              alt={event.title} 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80" />
+            <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/30 via-transparent to-transparent" />
+            
+            <div className="absolute bottom-0 left-0 right-0 p-8 space-y-4">
+                <div className="flex gap-2 font-sans">
                     {event.vibeTags && event.vibeTags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-[10px] bg-slate-100 text-slate-600 border-none">{tag}</Badge>
+                        <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white">
+                            {tag}
+                        </span>
                     ))}
-                    {event.tags.map(tag => (
-                        <Badge key={tag} variant="outline" className="text-[10px] text-slate-400">#{tag}</Badge>
-                    ))}
-                </div>
-
-                <p className="text-sm text-slate-600 line-clamp-2">
-                    {event.description}
-                </p>
-
-                <div className="flex items-center gap-2">
                     {isFree && (
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none">
-                            🟢 You're Free
-                        </Badge>
+                       <span className="px-3 py-1 bg-emerald-500/80 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white">
+                            You're Free
+                        </span>
                     )}
-                    <Badge variant="secondary" className="bg-slate-100 text-slate-600">
-                        {event.stats.attending} going
-                    </Badge>
                 </div>
-
-                {quietInterestCount > 0 && (
-                    <div className="mt-2 text-xs font-medium text-slate-500 italic bg-slate-50 border border-slate-100 rounded-lg p-2 text-center w-full">
-                        🤫 {quietInterestCount} {quietInterestCount === 1 ? 'person is' : 'people are'} quietly interested
+                <h3 className="text-3xl font-extrabold text-white leading-tight font-sans" style={{fontFamily: "'Plus Jakarta Sans', sans-serif"}}>
+                    {event.title}
+                </h3>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white/80">
+                        <span className="text-lg">📍</span>
+                        <span className="text-xs font-medium">{event.location} • {formatTime(event.startTime)}</span>
                     </div>
-                )}
-            </CardContent>
-
-            <CardFooter className="bg-slate-50/50 p-4 flex flex-col gap-4 border-t border-slate-100">
-                <div className="flex gap-2 w-full">
-                    <Button
-                        variant={isQuietlyInterested ? 'secondary' : 'outline'}
-                        className={`flex-1 rounded-xl ${isQuietlyInterested ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'text-slate-500 border-slate-300'}`}
-                        onClick={async () => {
-                            const newVal = !isQuietlyInterested;
-                            setIsQuietlyInterested(newVal);
-                            await markPrivateInterest(event.id, newVal);
-                        }}
-                    >
-                        I'm interested
-                    </Button>
-                    <Button
-                        variant={attendingStatus === 'attending' ? 'default' : 'outline'}
-                        className={`flex-1 rounded-xl font-bold ${attendingStatus === 'attending' ? 'bg-sky-500 hover:bg-sky-600 text-white' : 'text-slate-500 border-slate-300'}`}
-                        onClick={() => handleStatusChange(attendingStatus === 'attending' ? 'none' : 'attending')}
-                    >
-                        {attendingStatus === 'attending' ? '✓ I\'m going' : 'I\'m going'}
-                    </Button>
-                </div>
-
-                {attendingStatus === 'attending' && (
-                    <div className="w-full bg-white rounded-xl p-3 border border-slate-100">
-                        <div className="flex items-center justify-between cursor-pointer group" onClick={togglePair}>
-                            <span className="text-sm font-medium text-slate-600 group-hover:text-sky-600 transition-colors">Going as a pair?</span>
-                            <div className={`w-8 h-4 rounded-full transition-colors relative ${isPair ? 'bg-sky-500' : 'bg-slate-200'}`}>
-                                <div className={`w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform ${isPair ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                            </div>
+                    {/* Buddy Matching display inside card */}
+                    <div className="flex items-center -space-x-3 cursor-pointer hover:scale-105 transition-transform" onClick={(e) => {e.stopPropagation(); onFindBuddy(event);}}>
+                        {attendees.filter(a => a.isGoingAlone && a.status === 'attending').slice(0, 3).map((att, i) => (
+                           <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
+                               <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${att.userId}`} className="w-full h-full object-cover"/>
+                           </div>
+                        ))}
+                        <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">
+                            +{event.stats.attending}
                         </div>
-                        {isPair && (
-                            <div className="mt-3">
-                                <select 
-                                    value={linkedWith} 
-                                    onChange={(e) => handleLinkedWithChange(e.target.value)}
-                                    className="w-full text-sm p-2 rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:border-sky-300"
-                                >
-                                    <option value="" disabled>Select a friend</option>
-                                    {myFriends.map(f => (
-                                        <option key={f.uid} value={f.uid}>{f.displayName || f.email}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <div className="w-full pt-1">
-                    {(() => {
-                        const pool = attendees.filter(a => a.isGoingAlone && a.status === 'attending');
-                        if (pool.length <= 1) return null; // Suppress UI to prevent isolating the sole attendee
-
-                        return (
-                            <>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Looking for company</span>
-                                </div>
-                                <div className="flex items-center gap-2 mb-3 cursor-pointer" onClick={() => onFindBuddy(event)}>
-                                    <div className="flex -space-x-2">
-                                        {(() => {
-                                            const display = pool.slice(0, 4);
-                                            return (
-                                                <>
-                                                    {display.map((att, i) => (
-                                                        <div key={att.id || i} className="relative">
-                                                            <Avatar className="w-8 h-8 border-2 border-white">
-                                                                <AvatarFallback className="bg-sky-100 text-sky-700 text-xs">U</AvatarFallback>
-                                                            </Avatar>
-                                                            {att.isPair && (
-                                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[8px] shadow-sm ring-1 ring-slate-100">🔗</div>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                    {pool.length > 4 && (
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500 z-10">
-                                                            +{pool.length - 4}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-                                    <span className="text-xs font-medium text-sky-600 hover:text-sky-700 ml-auto">View All ↗</span>
-                                </div>
-                            </>
-                        );
-                    })()}
-
-                    <div className="flex gap-2 w-full mt-2">
-                        {attendingStatus === 'attending' && (
-                            <Button
-                                variant="secondary"
-                                className="flex-1 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                                onClick={() => onOpenChat(event)}
-                            >
-                                💬 Event Chat
-                            </Button>
-                        )}
-                        {event.registrationLink && (
-                            <Button
-                                variant="default"
-                                className="flex-1 rounded-xl bg-slate-800 hover:bg-slate-900"
-                                onClick={() => window.open(event.registrationLink, '_blank')}
-                            >
-                                {attendingStatus === 'attending' ? 'Details ↗' : 'In Person ↗'}
-                            </Button>
-                        )}
                     </div>
                 </div>
-            </CardFooter>
-        </Card>
+            </div>
+
+            {/* Interaction Icons overlaying right side */}
+            <div className="absolute top-8 right-6 flex flex-col gap-4">
+                <button 
+                  onClick={(e) => {e.stopPropagation(); handleStatusChange(attendingStatus === 'attending' ? 'none' : 'attending');}}
+                  className={`w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-colors ${attendingStatus === 'attending' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+                >
+                    <span className="text-xl">★</span>
+                </button>
+                <button 
+                  onClick={(e) => {e.stopPropagation(); markPrivateInterest(event.id, !isQuietlyInterested);}}
+                  className={`w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-colors ${isQuietlyInterested ? 'bg-sky-600 text-white border-sky-600' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+                >
+                    <span className="text-xl">🤫</span>
+                </button>
+                <button 
+                  onClick={(e) => {e.stopPropagation(); onOpenChat(event);}}
+                  className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center text-white border border-white/20 hover:bg-white/20 transition-colors"
+                >
+                    <span className="text-xl">💬</span>
+                </button>
+            </div>
+
+            {/* Anonymous Interest Count */}
+            {quietInterestCount > 0 && (
+              <div className="absolute bottom-20 left-8 text-white/70 text-xs font-medium">
+                {quietInterestCount} quietly interested
+              </div>
+            )}
+        </div>
     );
 }

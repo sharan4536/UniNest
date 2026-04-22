@@ -1,0 +1,19 @@
+src/components/MessagesPage.tsx(965,8): error TS2304: Cannot find name 'Dialog'.
+src/components/MessagesPage.tsx(966,10): error TS2304: Cannot find name 'DialogContent'.
+src/components/MessagesPage.tsx(967,12): error TS2304: Cannot find name 'DialogHeader'.
+src/components/MessagesPage.tsx(968,14): error TS2304: Cannot find name 'DialogTitle'.
+src/components/MessagesPage.tsx(970,15): error TS2304: Cannot find name 'DialogTitle'.
+src/components/MessagesPage.tsx(971,13): error TS2304: Cannot find name 'DialogHeader'.
+src/components/MessagesPage.tsx(975,16): error TS2304: Cannot find name 'Label'.
+src/components/MessagesPage.tsx(975,80): error TS2304: Cannot find name 'Label'.
+src/components/MessagesPage.tsx(984,16): error TS2304: Cannot find name 'Label'.
+src/components/MessagesPage.tsx(984,89): error TS2304: Cannot find name 'Label'.
+src/components/MessagesPage.tsx(1006,11): error TS2304: Cannot find name 'DialogContent'.
+src/components/MessagesPage.tsx(1007,9): error TS2304: Cannot find name 'Dialog'.
+src/components/ProfilePage.tsx(709,45): error TS2304: Cannot find name 'handlePrivacyChange'.
+src/components/ProfilePage.tsx(722,45): error TS2304: Cannot find name 'handlePrivacyChange'.
+src/components/ProfilePage.tsx(734,40): error TS2339: Property 'discoverable' does not exist on type '{ locationVisible: boolean; onlineStatusVisible: boolean; discoverVisible: boolean; timetableVisible: boolean; }'.
+src/components/ProfilePage.tsx(735,45): error TS2304: Cannot find name 'handlePrivacyChange'.
+src/components/ProfilePage.tsx(747,40): error TS2339: Property 'timetableShared' does not exist on type '{ locationVisible: boolean; onlineStatusVisible: boolean; discoverVisible: boolean; timetableVisible: boolean; }'.
+src/components/ProfilePage.tsx(748,45): error TS2304: Cannot find name 'handlePrivacyChange'.
+src/utils/imageParser.ts(20,32): error TS2339: Property 'words' does not exist on type 'Page'.

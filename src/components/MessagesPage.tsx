@@ -6,6 +6,8 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Label } from './ui/label';
 // Supabase removed
 import { auth, isFirebaseConfigured } from '../utils/firebase/client';
 import {
@@ -963,7 +965,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: { currentUser: { id
 
       {/* SOS Modal */}
       <Dialog open={sosModalOpen} onOpenChange={setSosModalOpen}>
-        <DialogContent className="glass-panel border-red-200 p-6 rounded-3xl shadow-2xl shadow-red-500/10 max-w-md">
+        <DialogContent className="bottom-sheet-content border-red-200 p-6 sm:max-w-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
               🆘 Broadcast Study SOS
