@@ -18,6 +18,8 @@ import {
 import { PulseSheet } from './PulseSheet';
 import { CheckInSheet } from './CheckInSheet';
 import { WhosAroundPanel } from './WhosAroundPanel';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { toast } from 'sonner';
 
 type HomePageProps = {
   currentUser?: {
@@ -133,6 +135,23 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
   const [whosAroundOpen, setWhosAroundOpen] = useState(false);
   const [pulses, setPulses] = useState<Pulse[]>([]);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
+
+  // Set Vibe — local quick picker (no sheet, no persistence — just a visible tag)
+  const [currentVibe, setCurrentVibe] = useState<string | null>(null);
+  const VIBE_OPTIONS = [
+    { id: 'chill', label: 'Chill', emoji: '🌿' },
+    { id: 'hype', label: 'Hype', emoji: '⚡' },
+    { id: 'study', label: 'Study', emoji: '📚' },
+    { id: 'social', label: 'Social', emoji: '👥' },
+    { id: 'music', label: 'Music', emoji: '🎧' },
+  ] as const;
+
+  // "Campus is buzzing" welcome card — auto-hide after 7s
+  const [buzzVisible, setBuzzVisible] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setBuzzVisible(false), 7000);
+    return () => clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     if (!(isFirebaseConfigured && auth.currentUser?.emailVerified)) return;
@@ -270,13 +289,61 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
             </span>
           </button>
 
-          <button
-            type="button"
-            className="campus-vibe-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-sky-700 shadow-[0_16px_40px_rgba(0,98,134,0.12)] transition hover:scale-[0.99]"
-          >
-            <SmilePlus className="h-4 w-4" />
-            Set Vibe
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="campus-vibe-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-sky-700 shadow-[0_16px_40px_rgba(0,98,134,0.12)] transition hover:scale-[0.99]"
+                data-testid="set-vibe-btn"
+              >
+                {currentVibe ? (
+                  <>
+                    <span className="text-base leading-none">
+                      {VIBE_OPTIONS.find((v) => v.id === currentVibe)?.emoji}
+                    </span>
+                    <span className="capitalize">{currentVibe}</span>
+                  </>
+                ) : (
+                  <>
+                    <SmilePlus className="h-4 w-4" />
+                    Set Vibe
+                  </>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="z-[1001] w-44 rounded-2xl border border-white/60 bg-white/95 p-1.5 shadow-[0_18px_45px_rgba(41,48,51,0.18)] backdrop-blur-xl"
+              data-testid="set-vibe-menu"
+            >
+              {VIBE_OPTIONS.map((v) => (
+                <DropdownMenuItem
+                  key={v.id}
+                  onClick={() => {
+                    setCurrentVibe(v.id);
+                    toast.success(`Vibe set to ${v.label}`, { description: 'Friends will see this on your profile.' });
+                  }}
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 focus:bg-sky-50 focus:text-sky-700"
+                  data-testid={`vibe-option-${v.id}`}
+                >
+                  <span className="text-base">{v.emoji}</span>
+                  <span>{v.label}</span>
+                </DropdownMenuItem>
+              ))}
+              {currentVibe && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setCurrentVibe(null);
+                    toast('Vibe cleared');
+                  }}
+                  className="mt-1 flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 focus:bg-slate-100"
+                  data-testid="vibe-option-clear"
+                >
+                  Clear vibe
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/75 px-3 py-2 text-xs font-semibold text-slate-700 shadow-[0_12px_30px_rgba(41,48,51,0.08)] backdrop-blur-xl">
           <LocateFixed className="h-3.5 w-3.5 text-sky-600" />
@@ -336,7 +403,12 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
         </section>
       </aside>
 
-      <div className="absolute inset-x-0 bottom-32 z-[999] px-4 sm:px-6 xl:hidden">
+      <div
+        className={`absolute inset-x-0 bottom-32 z-[999] px-4 transition-opacity duration-500 sm:px-6 xl:hidden ${
+          buzzVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        data-testid="campus-buzzing-card"
+      >
         <div className="campus-glass-card mx-auto max-w-md rounded-[28px] p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -358,6 +430,15 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
 
       {/* FEATURES 1 + 5 — Floating action stack (bottom-right) */}
       <div className="absolute bottom-36 right-4 z-[1000] flex flex-col items-end gap-3 xl:bottom-8">
+        <button
+          type="button"
+          onClick={() => setWhosAroundOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/85 px-4 py-2.5 text-sm font-bold text-sky-700 shadow-[0_18px_40px_rgba(14,165,233,0.18)] backdrop-blur-xl transition hover:scale-[0.98]"
+          data-testid="whos-around-fab"
+        >
+          <Users className="h-4 w-4" />
+          Who's around
+        </button>
         <button
           type="button"
           onClick={() => setCheckinSheetOpen(true)}

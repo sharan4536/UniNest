@@ -127,6 +127,11 @@ export interface Pulse {
   text: string;
   createdBy: string;
   location?: string;
+  vibe?: string;
+  crowdMin?: number;
+  crowdMax?: number;
+  isPublic?: boolean;
+  durationMinutes?: number;
   expiresAt: Timestamp;
   createdAt: Timestamp;
 }
@@ -1656,22 +1661,32 @@ export const getUserPublicKey = async (userId: string): Promise<JsonWebKey | nul
 // ------ CONNECT FEATURES HELPER FUNCTIONS ------
 
 // 1. Pulses
-export const createPulse = async (text: string, durationMinutes: number, location?: string) => {
+export const createPulse = async (
+  text: string,
+  durationMinutes: number,
+  metadata?: { vibe?: string; crowdMin?: number; crowdMax?: number; isPublic?: boolean; location?: string },
+) => {
   if (!isFirebaseConfigured || !(auth as any)?.currentUser) return;
   const userId = (auth as any).currentUser.uid;
   const expiresAt = new Date(Date.now() + durationMinutes * 60000);
-  
+
   try {
     const pulseRef = doc(db, 'pulses', userId);
     await setDoc(pulseRef, {
       text,
       createdBy: userId,
-      location: location || null,
+      location: metadata?.location || null,
+      vibe: metadata?.vibe || null,
+      crowdMin: typeof metadata?.crowdMin === 'number' ? metadata.crowdMin : null,
+      crowdMax: typeof metadata?.crowdMax === 'number' ? metadata.crowdMax : null,
+      isPublic: typeof metadata?.isPublic === 'boolean' ? metadata.isPublic : true,
+      durationMinutes,
       expiresAt: Timestamp.fromDate(expiresAt),
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error creating pulse:', error);
+    throw error;
   }
 };
 

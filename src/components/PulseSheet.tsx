@@ -75,6 +75,26 @@ export function PulseSheet({ open, onOpenChange }: PulseSheetProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh] px-0 pb-0">
+        {/* Hide default range thumb so the custom visual knobs sit cleanly on top */}
+        <style>{`
+          input[type="range"][data-testid="pulse-crowd-min"]::-webkit-slider-thumb,
+          input[type="range"][data-testid="pulse-crowd-max"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            cursor: pointer;
+          }
+          input[type="range"][data-testid="pulse-crowd-min"]::-moz-range-thumb,
+          input[type="range"][data-testid="pulse-crowd-max"]::-moz-range-thumb {
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+          }
+        `}</style>
         <div className="flex flex-col h-full">
           {/* Drag Handle & Step Indicator */}
           <div className="flex flex-col items-center pt-4 pb-2 px-8">
@@ -191,11 +211,9 @@ export function PulseSheet({ open, onOpenChange }: PulseSheetProps) {
                           const newMin = Math.min(Number(e.target.value), crowdMax);
                           setCrowdMin(newMin);
                         }}
-                        className="absolute w-full h-2 top-5 appearance-none bg-transparent rounded-full cursor-pointer pointer-events-none z-5"
-                        style={{
-                          WebkitAppearance: 'slider-horizontal',
-                          outline: 'none',
-                        }}
+                        className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-8 w-full appearance-none bg-transparent cursor-pointer z-20"
+                        style={{ WebkitAppearance: 'none', outline: 'none' }}
+                        data-testid="pulse-crowd-min"
                       />
 
                       <input
@@ -207,21 +225,20 @@ export function PulseSheet({ open, onOpenChange }: PulseSheetProps) {
                           const newMax = Math.max(Number(e.target.value), crowdMin);
                           setCrowdMax(newMax);
                         }}
-                        className="absolute w-full h-2 top-5 appearance-none bg-transparent rounded-full cursor-pointer pointer-events-none z-6"
-                        style={{
-                          WebkitAppearance: 'slider-horizontal',
-                          outline: 'none',
-                        }}
+                        className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-8 w-full appearance-none bg-transparent cursor-pointer z-30"
+                        style={{ WebkitAppearance: 'none', outline: 'none' }}
+                        data-testid="pulse-crowd-max"
                       />
 
+                      {/* Visual knobs (purely decorative — native range handles the events) */}
                       <div
-                        className="absolute w-8 h-8 bg-white border-4 border-primary rounded-full shadow-md z-10 cursor-grab active:cursor-grabbing pointer-events-auto"
-                        style={{ left: `calc(${(crowdMin / 100) * 100}% - 16px)` }}
+                        className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-4 border-primary rounded-full shadow-md z-10"
+                        style={{ left: `calc(${(crowdMin / 100) * 100}% - 12px)` }}
                       ></div>
 
                       <div
-                        className="absolute w-8 h-8 bg-white border-4 border-primary rounded-full shadow-md z-10 cursor-grab active:cursor-grabbing pointer-events-auto"
-                        style={{ left: `calc(${(crowdMax / 100) * 100}% - 16px)` }}
+                        className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-4 border-primary rounded-full shadow-md z-10"
+                        style={{ left: `calc(${(crowdMax / 100) * 100}% - 12px)` }}
                       ></div>
                     </div>
 
