@@ -2,9 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
-import { Coffee, LibraryBig, LocateFixed, SmilePlus, Users } from 'lucide-react';
+import { Coffee, LibraryBig, LocateFixed, Plus, Radio, SmilePlus, Sparkles, Users } from 'lucide-react';
 import { auth, isFirebaseConfigured } from '../utils/firebase/client';
-import { getCurrentLocation, getFriendLocations, updateUserLocation, type FriendLocation } from '../utils/firebase/firestore';
+import {
+  createConversation,
+  getCheckIns,
+  getCurrentLocation,
+  getFriendLocations,
+  getPulses,
+  updateUserLocation,
+  type CheckIn,
+  type FriendLocation,
+  type Pulse,
+} from '../utils/firebase/firestore';
+import { PulseSheet } from './PulseSheet';
+import { CheckInSheet } from './CheckInSheet';
+import { WhosAroundPanel } from './WhosAroundPanel';
 
 type HomePageProps = {
   currentUser?: {
@@ -114,6 +127,56 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
     return () => unsubscribe();
   }, []);
 
+  // ---- FEATURE 1: Pulses + FEATURE 5: Check-ins ----------------------------
+  const [pulseSheetOpen, setPulseSheetOpen] = useState(false);
+  const [checkinSheetOpen, setCheckinSheetOpen] = useState(false);
+  const [whosAroundOpen, setWhosAroundOpen] = useState(false);
+  const [pulses, setPulses] = useState<Pulse[]>([]);
+  const [checkins, setCheckins] = useState<CheckIn[]>([]);
+
+  useEffect(() => {
+    if (!(isFirebaseConfigured && auth.currentUser?.emailVerified)) return;
+    const unsubP = getPulses((list) => setPulses(list));
+    const unsubC = getCheckIns((list) => setCheckins(list));
+    return () => { unsubP && unsubP(); unsubC && unsubC(); };
+  }, []);
+
+  const myUid = auth.currentUser?.uid;
+  const otherPulses = useMemo(() => pulses.filter((p) => p.createdBy !== myUid), [pulses, myUid]);
+
+  const openDmWithUser = async (otherUid: string) => {
+    try {
+      await createConversation(otherUid);
+    } catch (e) {
+      console.error('DM open failed', e);
+    }
+    onNavigate?.('messages');
+  };
+
+  // Map a check-in's free-text location to coordinates relative to mapCenter
+  // so friends' check-ins appear as pins scattered around the current view.
+  const locationOffsets: Record<string, { dLat: number; dLng: number }> = {
+    'Canteen': { dLat: 0.0005, dLng: 0.0005 },
+    'Library': { dLat: 0.0010, dLng: -0.0008 },
+    'Common Room': { dLat: -0.0005, dLng: 0.0010 },
+    'Sports Ground': { dLat: -0.0012, dLng: -0.0012 },
+    'Academic Block': { dLat: 0.0003, dLng: -0.0015 },
+  };
+  const checkinPins = useMemo(() => (
+    checkins
+      .filter((c) => c.createdBy !== myUid)
+      .map((c) => {
+        const off = locationOffsets[c.location] || { dLat: 0, dLng: 0 };
+        return {
+          id: c.id || c.createdBy,
+          uid: c.createdBy,
+          location: c.location,
+          lat: mapCenter.lat + off.dLat,
+          lng: mapCenter.lng + off.dLng,
+        };
+      })
+  ), [checkins, mapCenter, myUid]);
+
   const visibleMarkers = liveFriendLocations.length
     ? liveFriendLocations.map((friend, index) => ({
         id: friend.uid,
@@ -173,6 +236,17 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
               }}
             />
           ))}
+          {/* FEATURE 5 — Friend check-in pins */}
+          {checkinPins.map((pin) => (
+            <Marker
+              key={`checkin-${pin.id}`}
+              position={[pin.lat, pin.lng]}
+              icon={createCheckinIcon(pin.location)}
+              eventHandlers={{
+                click: () => openDmWithUser(pin.uid),
+              }}
+            />
+          ))}
         </MapContainer>
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(246,251,255,0.64)_0%,rgba(241,247,251,0.06)_38%,rgba(241,247,251,0.58)_100%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(45,183,242,0.22),transparent_28%),radial-gradient(circle_at_80%_30%,rgba(167,169,255,0.2),transparent_26%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.85),transparent_38%)]" />
@@ -208,6 +282,28 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
           <LocateFixed className="h-3.5 w-3.5 text-sky-600" />
           {mapLabel}
         </div>
+
+        {/* FEATURE 1 — Active friend pulses (horizontal pill strip) */}
+        {otherPulses.length > 0 && (
+          <div className="mt-3 -mx-1 flex items-center gap-2 overflow-x-auto pb-1" data-testid="pulse-strip">
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-700 backdrop-blur-xl">
+              <Radio className="h-3 w-3 animate-pulse" /> Live
+            </span>
+            {otherPulses.slice(0, 12).map((p) => (
+              <button
+                key={p.id || p.createdBy}
+                type="button"
+                onClick={() => openDmWithUser(p.createdBy)}
+                className="shrink-0 max-w-[240px] truncate rounded-full border border-white/60 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-[0_10px_24px_rgba(41,48,51,0.08)] backdrop-blur-xl transition hover:bg-white"
+                data-testid={`pulse-pill-${p.createdBy}`}
+                title={p.text}
+              >
+                <Sparkles className="mr-1 inline h-3 w-3 text-sky-500" />
+                {p.text}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <aside className="absolute left-4 top-24 z-20 hidden w-72 space-y-4 xl:block">
@@ -247,10 +343,45 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
               <p className="text-sm font-bold text-slate-900">Campus is buzzing</p>
               <p className="mt-1 text-xs text-slate-500">142 online, 2 live events nearby</p>
             </div>
-            <Users className="h-5 w-5 text-sky-500" />
+            <button
+              type="button"
+              onClick={() => setWhosAroundOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1.5 text-xs font-bold text-sky-700 hover:bg-sky-200"
+              data-testid="whos-around-trigger"
+            >
+              <Users className="h-3.5 w-3.5" />
+              Who's around
+            </button>
           </div>
         </div>
       </div>
+
+      {/* FEATURES 1 + 5 — Floating action stack (bottom-right) */}
+      <div className="absolute bottom-36 right-4 z-30 flex flex-col items-end gap-3 xl:bottom-8">
+        <button
+          type="button"
+          onClick={() => setCheckinSheetOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/85 px-4 py-2.5 text-sm font-bold text-sky-700 shadow-[0_18px_40px_rgba(14,165,233,0.25)] backdrop-blur-xl transition hover:scale-[0.98]"
+          data-testid="checkin-fab"
+        >
+          <LocateFixed className="h-4 w-4" />
+          Check In
+        </button>
+        <button
+          type="button"
+          onClick={() => setPulseSheetOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 px-5 py-3 text-sm font-extrabold text-white shadow-[0_24px_50px_rgba(14,165,233,0.45)] transition hover:scale-[0.97]"
+          data-testid="pulse-fab"
+        >
+          <Plus className="h-4 w-4" />
+          Pulse
+        </button>
+      </div>
+
+      {/* Sheets */}
+      <PulseSheet open={pulseSheetOpen} onOpenChange={setPulseSheetOpen} />
+      <CheckInSheet open={checkinSheetOpen} onOpenChange={setCheckinSheetOpen} />
+      <WhosAroundPanel open={whosAroundOpen} onOpenChange={setWhosAroundOpen} />
 
     </div>
   );
@@ -297,5 +428,22 @@ function createAvatarIcon(image: string, accent: string) {
     `,
     iconSize: [48, 48],
     iconAnchor: [24, 24],
+  });
+}
+
+function createCheckinIcon(location: string) {
+  const initial = (location || '•').charAt(0).toUpperCase();
+  return L.divIcon({
+    className: 'campus-checkin-marker',
+    html: `
+      <div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-6px);">
+        <div style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:9999px;background:white;border:1px solid rgba(125,211,252,0.7);box-shadow:0 10px 24px rgba(14,165,233,0.25);">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9999px;background:#0ea5e9;color:white;font-size:10px;font-weight:700;">${initial}</span>
+          <span style="font-size:10px;font-weight:700;color:#0369a1;white-space:nowrap;">${location}</span>
+        </div>
+      </div>
+    `,
+    iconSize: [120, 28],
+    iconAnchor: [60, 14],
   });
 }
