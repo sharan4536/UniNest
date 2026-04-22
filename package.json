@@ -70,6 +70,7 @@
       },
       "scripts": {
             "dev": "vite",
+            "start": "vite --port 3000 --host 0.0.0.0",
             "build": "vite build",
             "firebase:login": "firebase login",
             "firebase:init": "firebase init firestore",
