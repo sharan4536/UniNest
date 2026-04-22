@@ -9,24 +9,24 @@ const developers = [
     role: 'Lead Developer',
     bio: 'Full-stack developer passionate about connecting students through technology.',
     skills: ['React', 'Node.js', 'Python', 'UI/UX'],
-    github: 'Pavan',
-    linkedin: 'Pavan'
   },
   {
     name: 'Abhinav M',
     role: 'UI/UX Developer',
     bio: 'Systems architect ensuring scalable and secure backend infrastructure.',
     skills: ['Node.js', 'FireBase'],
-    github: 'abhinav',
-    linkedin: 'abhinav'
   },
   {
-    name: 'Sharan',
-    role: 'Product Designer',
+    name: 'Keerthi',
+    role: 'UI/UX Developer',
     bio: 'UX researcher and designer creating meaningful connections through design.',
     skills: ['Figma', 'User Research', 'Prototyping', 'Design Thinking'],
-    github: 'Sharan',
-    linkedin: 'sharangoshreddy'
+  },
+  {
+    name: 'Sonika',
+    role: 'UI/UX Developer',
+    bio: 'UX researcher and designer creating meaningful connections through design.',
+    skills: ['Figma', 'User Research', 'Prototyping', 'Design Thinking'],
   }
 ];
 

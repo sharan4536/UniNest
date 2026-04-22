@@ -20,6 +20,8 @@ import {
   increment
 } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured } from './client';
+import { formatEmailToName } from '../nameUtils';
+export { db };
 import { User } from 'firebase/auth';
 
 // Types
@@ -85,8 +87,70 @@ export interface CampusEvent {
   crowdSize?: string;
   buddyMatchingEnabled?: boolean;
   imageUrl?: string;
+  isFeatured?: boolean;
+  isTrending?: boolean;
+  isSponsored?: boolean;
   createdBy: string;
   createdAt: Timestamp;
+}
+
+export interface Advertisement {
+  id?: string;
+  title: string;
+  brandName: string;
+  description: string;
+  location: {
+    lat: number;
+    lng: number;
+    name?: string;
+  };
+  radius: number; // in meters
+  imageUrl: string;
+  ctaLink: string;
+  ctaText: string;
+  type: 'in-campus' | 'out-campus';
+  startDate: Timestamp;
+  endDate: Timestamp;
+  status: 'active' | 'inactive' | 'scheduled';
+  stats: {
+    impressions: number;
+    clicks: number;
+  };
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+export interface AdminNotification {
+  id?: string;
+  title: string;
+  message: string;
+  imageUrl?: string;
+  redirectLink?: string; // event/map/ad link
+  targetGroups?: {
+    year?: string[];
+    major?: string[];
+    interests?: string[];
+  };
+  type: 'event' | 'announcement' | 'promotion';
+  status: 'sent' | 'scheduled' | 'draft';
+  scheduledAt?: Timestamp;
+  sentAt?: Timestamp;
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+export interface AdAnalytics {
+  id?: string;
+  adId: string;
+  impressions: number;
+  clicks: number;
+  date: string; // YYYY-MM-DD
+}
+
+export interface AdminUser {
+  uid: string;
+  role: 'super-admin' | 'event-manager' | 'marketing-manager';
+  permissions: string[];
 }
 
 export interface EventAttendee {
@@ -162,6 +226,10 @@ const messagesCollection = isFirebaseConfigured ? collection(db, 'messages') : (
 const eventsCollection = isFirebaseConfigured ? collection(db, 'events') : (undefined as any);
 const eventAttendeesCollection = isFirebaseConfigured ? collection(db, 'eventAttendees') : (undefined as any);
 const eventChatsCollection = isFirebaseConfigured ? collection(db, 'eventChats') : (undefined as any);
+const adsCollection = isFirebaseConfigured ? collection(db, 'ads') : (undefined as any);
+const adminNotificationsCollection = isFirebaseConfigured ? collection(db, 'adminNotifications') : (undefined as any);
+const adAnalyticsCollection = isFirebaseConfigured ? collection(db, 'adAnalytics') : (undefined as any);
+const adminUsersCollection = isFirebaseConfigured ? collection(db, 'adminUsers') : (undefined as any);
 
 // Helper: email verification is sufficient for messaging
 const isVerifiedEmailUser = () => {
@@ -188,7 +256,7 @@ export const createUserProfile = async (user: User, additionalData?: Partial<Use
       await setDoc(userRef, {
         uid: user.uid,
         email,
-        displayName: displayName || email?.split('@')[0] || 'User',
+        displayName: displayName || formatEmailToName(email),
         photoURL: photoURL || null,
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
@@ -1292,7 +1360,7 @@ export const updateUserStatus = async (status: 'in class' | 'in library' | 'in g
         await setDoc(userRef, {
           uid: userId,
           email: auth.currentUser.email,
-          displayName: auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'User',
+          displayName: auth.currentUser.displayName || formatEmailToName(auth.currentUser.email),
           status,
           lastActive: serverTimestamp(),
           createdAt: serverTimestamp()
@@ -1813,4 +1881,221 @@ export const getCheckIns = (callback: (checkins: CheckIn[]) => void) => {
     console.error('Error listening to CheckIns:', error);
     callback([]);
   });
+};
+
+// ------ ADMIN & DASHBOARD FUNCTIONS ------
+
+// 1. Admin Auth & RBAC
+export const getAdminUser = async (uid: string): Promise<AdminUser | null> => {
+  if (!isFirebaseConfigured || !uid) return null;
+  try {
+    const adminRef = doc(adminUsersCollection, uid);
+    const snap = await getDoc(adminRef);
+    if (snap.exists()) return snap.data() as AdminUser;
+    return null;
+  } catch (e) {
+    console.error('Error getting admin user:', e);
+    return null;
+  }
+};
+
+// 2. Event Management (Enhanced)
+export const updateEventMetadata = async (eventId: string, metadata: { isFeatured?: boolean, isTrending?: boolean, isSponsored?: boolean }) => {
+  if (!isFirebaseConfigured || !eventId) return;
+  const eventRef = doc(eventsCollection, eventId);
+  await updateDoc(eventRef, { ...metadata, updatedAt: serverTimestamp() });
+};
+
+export const deleteEvent = async (eventId: string) => {
+  if (!isFirebaseConfigured || !eventId) return;
+  await deleteDoc(doc(eventsCollection, eventId));
+};
+
+export const createEvent = async (eventData: Omit<CampusEvent, 'id' | 'createdAt' | 'stats'>) => {
+  if (!isFirebaseConfigured) return null;
+  try {
+    const docRef = await addDoc(eventsCollection, {
+      ...eventData,
+      stats: { attending: 0, interested: 0, views: 0 },
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (e) {
+    console.error('Error creating event:', e);
+    return null;
+  }
+};
+
+export const getUpcomingEventsRealtime = (callback: (events: CampusEvent[]) => void) => {
+  if (!isFirebaseConfigured) return () => {};
+  const q = query(eventsCollection, orderBy('startTime', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const events: CampusEvent[] = [];
+    snapshot.forEach(doc => events.push({ id: doc.id, ...doc.data() } as CampusEvent));
+    callback(events);
+  });
+};
+
+// 3. Advertisement Management
+export const createAdvertisement = async (adData: Omit<Advertisement, 'id' | 'createdAt' | 'stats'>) => {
+  if (!isFirebaseConfigured) return null;
+  try {
+    const docRef = await addDoc(adsCollection, {
+      ...adData,
+      stats: { impressions: 0, clicks: 0 },
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (e) {
+    console.error('Error creating ad:', e);
+    return null;
+  }
+};
+
+export const updateAdvertisement = async (adId: string, adData: Partial<Advertisement>) => {
+  if (!isFirebaseConfigured || !adId) return;
+  await updateDoc(doc(adsCollection, adId), { ...adData, updatedAt: serverTimestamp() });
+};
+
+export const deleteAdvertisement = async (adId: string) => {
+  if (!isFirebaseConfigured || !adId) return;
+  await deleteDoc(doc(adsCollection, adId));
+};
+
+export const getActiveAds = (callback: (ads: Advertisement[]) => void) => {
+  if (!isFirebaseConfigured) return () => {};
+  const now = Timestamp.now();
+  const q = query(
+    adsCollection,
+    where('status', '==', 'active'),
+    where('endDate', '>=', now)
+  );
+  return onSnapshot(q, (snapshot) => {
+    const ads: Advertisement[] = [];
+    snapshot.forEach(doc => ads.push({ id: doc.id, ...doc.data() } as Advertisement));
+    callback(ads);
+  });
+};
+
+export const getAllAds = async (): Promise<Advertisement[]> => {
+  if (!isFirebaseConfigured) return [];
+  const snapshot = await getDocs(adsCollection);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Advertisement));
+};
+
+export const getAllAdsRealtime = (callback: (ads: Advertisement[]) => void) => {
+  if (!isFirebaseConfigured) return () => {};
+  const q = query(adsCollection, orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const ads: Advertisement[] = [];
+    snapshot.forEach(doc => ads.push({ id: doc.id, ...doc.data() } as Advertisement));
+    callback(ads);
+  });
+};
+
+// 4. Notification Management
+export const createAdminNotification = async (notifData: Omit<AdminNotification, 'id' | 'createdAt'>) => {
+  if (!isFirebaseConfigured) return null;
+  try {
+    const docRef = await addDoc(adminNotificationsCollection, {
+      ...notifData,
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (e) {
+    console.error('Error creating notification:', e);
+    return null;
+  }
+};
+
+export const getAllNotifications = async (): Promise<AdminNotification[]> => {
+  if (!isFirebaseConfigured) return [];
+  const snapshot = await getDocs(query(adminNotificationsCollection, orderBy('createdAt', 'desc')));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AdminNotification));
+};
+
+export const getAllNotificationsRealtime = (callback: (notifications: AdminNotification[]) => void) => {
+  if (!isFirebaseConfigured) return () => {};
+  const q = query(adminNotificationsCollection, orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const notifs: AdminNotification[] = [];
+    snapshot.forEach(doc => notifs.push({ id: doc.id, ...doc.data() } as AdminNotification));
+    callback(notifs);
+  });
+};
+
+// 5. Analytics
+export const recordAdImpression = async (adId: string) => {
+  if (!isFirebaseConfigured || !adId) return;
+  const adRef = doc(adsCollection, adId);
+  await updateDoc(adRef, { 'stats.impressions': increment(1) });
+  
+  // Also update daily analytics
+  const today = new Date().toISOString().split('T')[0];
+  const analyticsId = `${adId}_${today}`;
+  const analyticsRef = doc(adAnalyticsCollection, analyticsId);
+  const snap = await getDoc(analyticsRef);
+  if (snap.exists()) {
+    await updateDoc(analyticsRef, { impressions: increment(1) });
+  } else {
+    await setDoc(analyticsRef, { adId, date: today, impressions: 1, clicks: 0 });
+  }
+};
+
+export const recordAdClick = async (adId: string) => {
+  if (!isFirebaseConfigured || !adId) return;
+  const adRef = doc(adsCollection, adId);
+  await updateDoc(adRef, { 'stats.clicks': increment(1) });
+  
+  const today = new Date().toISOString().split('T')[0];
+  const analyticsId = `${adId}_${today}`;
+  const analyticsRef = doc(adAnalyticsCollection, analyticsId);
+  await updateDoc(analyticsRef, { clicks: increment(1) });
+};
+
+export const getAdAnalytics = async (adId: string): Promise<AdAnalytics[]> => {
+  if (!isFirebaseConfigured || !adId) return [];
+  const q = query(adAnalyticsCollection, where('adId', '==', adId), orderBy('date', 'asc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AdAnalytics));
+};
+
+// 6. Dashboard Stats
+export interface DashboardStats {
+  totalUsers: number;
+  activeUsers24h: number;
+  totalEvents: number;
+  activeAds: number;
+  totalImpressions: number;
+  totalClicks: number;
+}
+
+export const getDashboardStats = async (): Promise<DashboardStats> => {
+  if (!isFirebaseConfigured) return { totalUsers: 0, activeUsers24h: 0, totalEvents: 0, activeAds: 0, totalImpressions: 0, totalClicks: 0 };
+  
+  const [usersSnap, eventsSnap, adsSnap] = await Promise.all([
+    getDocs(usersCollection),
+    getDocs(eventsCollection),
+    getDocs(query(adsCollection, where('status', '==', 'active')))
+  ]);
+
+  let totalImpressions = 0;
+  let totalClicks = 0;
+  
+  // Calculate total ad stats (could be optimized with a separate global stats doc)
+  const allAds = await getDocs(adsCollection);
+  allAds.forEach(doc => {
+    const data = doc.data() as Advertisement;
+    totalImpressions += data.stats?.impressions || 0;
+    totalClicks += data.stats?.clicks || 0;
+  });
+
+  return {
+    totalUsers: usersSnap.size,
+    activeUsers24h: 0, // Would need lastActive filter
+    totalEvents: eventsSnap.size,
+    activeAds: adsSnap.size,
+    totalImpressions,
+    totalClicks
+  };
 };

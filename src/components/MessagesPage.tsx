@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { formatEmailToName } from '../utils/nameUtils';
 import {
   createConversation,
   getConversations,
@@ -359,7 +360,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
     const query = friendSearch.toLowerCase();
     return friends.filter((friend) => {
       const resolved =
-        friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || 'User';
+        formatEmailToName(friendProfileNames[friend.uid] || friend.displayName || friend.email);
       return resolved.toLowerCase().includes(query);
     });
   }, [friendProfileNames, friendSearch, friends]);
@@ -467,7 +468,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
     setProcessingRequests((prev) => new Set(prev).add(request.id!));
     try {
       const result = await acceptFriendRequest(request.id, request.senderId);
-      if (result?.success) {
+      if (result && typeof result === 'object' && 'success' in result && result.success) {
         setSurface('messages');
       }
     } finally {
@@ -927,7 +928,7 @@ export function MessagesPage({ currentUser, onOpenProfile }: MessagesPageProps) 
               ) : (
                 filteredFriends.slice(0, 8).map((friend) => {
                   const resolvedName =
-                    friendProfileNames[friend.uid] || friend.displayName || friend.email?.split('@')[0] || 'User';
+                      formatEmailToName(friendProfileNames[friend.uid] || friend.displayName || friend.email);
 
                   return (
                     <div key={friend.uid} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">

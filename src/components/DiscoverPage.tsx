@@ -6,12 +6,15 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { auth, isFirebaseConfigured } from '../utils/firebase/client';
-import { sendFriendRequest, UserProfile, getEnhancedFriendProfile, EnhancedFriendProfile, getProfile, getFriendTimetable, type ClassItem, getAllUsers, getFriends, CampusEvent, getUpcomingEvents, loadTimetable, seedTestEvent, createConversation, getSOSAlerts, SOSAlert, createCampusEvent, getCheckIns, type CheckIn } from '../utils/firebase/firestore';
+import { sendFriendRequest, UserProfile, getEnhancedFriendProfile, EnhancedFriendProfile, getProfile, getFriendTimetable, type ClassItem, getAllUsers, getFriends, CampusEvent, getUpcomingEventsRealtime, loadTimetable, seedTestEvent, createConversation, getSOSAlerts, SOSAlert, createCampusEvent, getCheckIns, type CheckIn } from '../utils/firebase/firestore';
 import { EventCard } from './EventCard';
 import { EventChat } from './EventChat';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 // Supabase removed
-import { Search, Plus, MessageCircle, UserPlus, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, MessageCircle, UserPlus, SlidersHorizontal, Globe2, MapPin, Compass } from 'lucide-react';
+import { computeCommonFreeSlots, formatTimeLabel } from '../utils/scheduleCompare';
+import { formatEmailToName } from '../utils/nameUtils';
+
 type SuggestedUser = {
   id: string;
   name: string;
@@ -68,6 +71,9 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
   // SOS Alerts & CheckIns State
   const [sosAlerts, setSosAlerts] = useState<SOSAlert[]>([]);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
+  const [showStudyGroupModal, setShowStudyGroupModal] = useState<boolean>(false);
+  const [selectedFriendForStudy, setSelectedFriendForStudy] = useState<SuggestedUser | null>(null);
+  const [commonFreeSlots, setCommonFreeSlots] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     const unsubSOS = getSOSAlerts((alerts) => setSosAlerts(alerts));
@@ -76,16 +82,36 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
   }, []);
 
   useEffect(() => {
-    // Load Events and My Timetable
-    const loadEventsData = async () => {
-      const evs = await getUpcomingEvents();
-      setEvents(evs);
+    if (selectedFriendForStudy) {
+      const fetchFreeTime = async () => {
+        const friendTimetable = await getFriendTimetable(selectedFriendForStudy.id);
+        const common = computeCommonFreeSlots(myTimetable, friendTimetable);
+        setCommonFreeSlots(common);
+      };
+      fetchFreeTime();
+    }
+  }, [selectedFriendForStudy, myTimetable]);
 
+  useEffect(() => {
+    // Load Events and My Timetable
+    const unsubscribeEvents = getUpcomingEventsRealtime((evs) => {
+      // Sort: Sponsored first, then by startTime
+      const sortedEvs = [...evs].sort((a, b) => {
+        if (a.isSponsored && !b.isSponsored) return -1;
+        if (!a.isSponsored && b.isSponsored) return 1;
+        return a.startTime.toMillis() - b.startTime.toMillis();
+      });
+      setEvents(sortedEvs);
+    });
+
+    const loadTimetableData = async () => {
       const myT = await loadTimetable();
       setMyTimetable(myT);
     };
-    loadEventsData();
-  }, []); // Empty dependency array to run once on mount
+    loadTimetableData();
+
+    return () => unsubscribeEvents();
+  }, []); // Runs once on mount, sets up listener and loads timetable
 
   // Fetch buddies for selected event
   useEffect(() => {
@@ -123,26 +149,12 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
   useEffect(() => {
     // Subscribe to all registered users of UniNest (excluding the current user)
     const unsubscribe = getAllUsers(async (list) => {
-      const transformed = await Promise.all(
-        list.map(async (u) => {
-          let profileDoc: any = null;
-          try { profileDoc = await getProfile(u.uid); } catch { }
-          const base = transformUserProfileToSuggestedUser(u);
-          let enhanced: EnhancedFriendProfile | null = null;
-          try { enhanced = await getEnhancedFriendProfile(u.uid); } catch { }
-          return {
-            ...base,
-            name: (profileDoc?.name ?? enhanced?.displayName ?? base.name),
-            university: (profileDoc?.university ?? enhanced?.university ?? base.university),
-            major: (profileDoc?.major ?? enhanced?.major ?? base.major),
-            year: (profileDoc?.year ?? enhanced?.year ?? base.year),
-            bio: (profileDoc?.bio ?? enhanced?.bio ?? base.bio),
-            interests: (profileDoc?.interests ?? enhanced?.interests ?? base.interests),
-            clubs: (profileDoc?.clubs ?? enhanced?.clubs ?? []),
-            sharedCourses: (enhanced?.sharedCourses ?? base.sharedCourses ?? [])
-          } as SuggestedUser;
-        })
-      );
+      // Filter out current user immediately
+      const others = list.filter(u => u.uid !== auth.currentUser?.uid);
+      
+      const transformed = others.map((u) => {
+        return transformUserProfileToSuggestedUser(u);
+      });
       setFriendsUsers(transformed);
     });
     return () => { unsubscribe && unsubscribe(); };
@@ -207,7 +219,7 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
   const transformUserProfileToSuggestedUser = (userProfile: UserProfile): SuggestedUser => {
     return {
       id: userProfile.uid || 'unknown',
-      name: userProfile.displayName || 'Unknown User',
+      name: formatEmailToName(userProfile.displayName || userProfile.email),
       major: userProfile.major || 'Unknown Major',
       year: userProfile.year || 'Unknown Year',
       bio: userProfile.bio || undefined,
@@ -517,119 +529,135 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
     });
 
     return (
-      <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-        <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg border border-primary/10">
-          <Avatar className="w-16 h-16 border-2 border-white shadow-md">
-            <AvatarFallback className="text-xl bg-primary/20 text-primary">
-              {u?.name?.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-foreground">{u?.name}</h3>
-            <p className="text-muted-foreground">
-              {profile?.university || (u as any).university || 'University'} • {profile?.major || u?.major} • {profile?.year || u?.year}
-            </p>
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        {/* Profile Header */}
+        <div className="relative pb-6">
+          <div className="h-32 bg-gradient-to-br from-sky-400/20 to-violet-400/20 rounded-b-[2rem]" />
+          <div className="absolute top-16 left-0 right-0 flex flex-col items-center">
+            <Avatar className="h-24 w-24 border-4 border-white shadow-xl">
+              <AvatarFallback className="bg-sky-100 text-2xl font-bold text-sky-700">
+                {u?.name?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="mt-3 text-center px-6">
+              <h3 className="text-xl font-extrabold text-slate-800" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{u?.name}</h3>
+              <p className="text-sm font-medium text-slate-500 mt-0.5">
+                {profile?.major || u?.major} • Year {profile?.year || u?.year}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 pt-16 pb-8 space-y-6">
+          {/* Mutual Info Badge */}
+          <div className="flex justify-center">
             {profile?.mutualFriends !== undefined ? (
-              <Badge variant="secondary" className="mt-1 bg-white/50 border-gray-200">
+              <span className="rounded-full bg-sky-400/10 px-4 py-1.5 text-xs font-bold text-sky-600 ring-1 ring-sky-400/20">
                 {profile.mutualFriends} mutual friends
-              </Badge>
+              </span>
             ) : ('mutualFriends' in (u || {})) && (
-              <Badge variant="secondary" className="mt-1 bg-white/50 border-gray-200">
-                {(u as any).mutualFriends}
-              </Badge>
+              <span className="rounded-full bg-sky-400/10 px-4 py-1.5 text-xs font-bold text-sky-600 ring-1 ring-sky-400/20">
+                {(u as any).mutualFriends} mutual friends
+              </span>
             )}
           </div>
-        </div>
 
-        {(profile?.bio || ((('bio' in (u || {})) && (u as any).bio))) && (
-          <div className="p-4 bg-gray-50/50 rounded-lg border border-gray-100">
-            <h4 className="font-medium mb-2 text-foreground">About</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">{profile?.bio || ((('bio' in (u || {})) ? (u as any).bio : ''))}</p>
-          </div>
-        )}
+          {/* About Section */}
+          {(profile?.bio || (('bio' in (u || {})) && (u as any).bio)) && (
+            <div className="rounded-2xl bg-white/60 p-4 ring-1 ring-sky-400/10">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">About</h4>
+              <p className="text-sm text-slate-600 leading-relaxed italic">
+                "{profile?.bio || (('bio' in (u || {})) ? (u as any).bio : '')}"
+              </p>
+            </div>
+          )}
 
-        <div className="p-4 bg-gray-50/50 rounded-lg border border-gray-100">
-          <h4 className="font-medium mb-3 text-foreground">Quick Info</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center py-1 border-b border-gray-100/50">
-              <span className="text-muted-foreground font-medium">University</span>
-              <span className="text-foreground">{profile?.university || (u as any).university || 'University'}</span>
+          {/* Quick Info Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-white/60 p-3 ring-1 ring-sky-400/10 flex flex-col items-center text-center">
+              <Globe2 className="h-4 w-4 text-sky-400 mb-1" />
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Campus</span>
+              <span className="text-xs font-bold text-slate-700 truncate w-full">{profile?.university || (u as any).university || 'UniNest'}</span>
             </div>
-            <div className="flex justify-between items-center py-1 border-b border-gray-100/50">
-              <span className="text-muted-foreground font-medium">Major</span>
-              <span className="text-foreground">{profile?.major || u?.major}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b border-gray-100/50">
-              <span className="text-muted-foreground font-medium">Year</span>
-              <span className="text-foreground">{profile?.year || u?.year}</span>
-            </div>
-          </div>
-        </div>
-
-        {displaySharedCourses.length > 0 && (
-          <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-            <h4 className="font-medium mb-2 text-primary">Shared Courses</h4>
-            <div className="flex flex-wrap gap-2">
-              {displaySharedCourses.map((course, i) => (
-                <Badge key={i} variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                  📚 {course}
-                </Badge>
-              ))}
+            <div className="rounded-2xl bg-white/60 p-3 ring-1 ring-sky-400/10 flex flex-col items-center text-center">
+              <MapPin className="h-4 w-4 text-sky-400 mb-1" />
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Major</span>
+              <span className="text-xs font-bold text-slate-700 truncate w-full">{profile?.major || u?.major}</span>
             </div>
           </div>
-        )}
 
-        <Tabs defaultValue="interests" className="w-full">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="interests">Interests</TabsTrigger>
-            <TabsTrigger value="clubs">Activities</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="interests" className="mt-4">
-            <div className="flex flex-wrap gap-2">
-              {displayInterests.map((interest, i) => (
-                <Badge key={i} variant="secondary" className="px-3 py-1">
-                  ⭐ {interest}
-                </Badge>
-              ))}
+          {/* Shared Courses */}
+          {displaySharedCourses.length > 0 && (
+            <div className="rounded-2xl bg-violet-400/5 p-4 ring-1 ring-violet-400/10">
+              <h4 className="text-[10px] font-bold text-violet-500 uppercase tracking-widest mb-3">Shared Courses</h4>
+              <div className="flex flex-wrap gap-2">
+                {displaySharedCourses.map((course, i) => (
+                  <span key={i} className="rounded-full bg-violet-400/10 px-3 py-1 text-[11px] font-bold text-violet-600 ring-1 ring-violet-400/20">
+                    📚 {course}
+                  </span>
+                ))}
+              </div>
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="clubs" className="mt-4">
-            <div className="space-y-2">
+          {/* Tabs Section */}
+          <Tabs defaultValue="interests" className="w-full">
+            <TabsList className="grid grid-cols-3 w-full h-11 bg-white/60 rounded-xl p-1 ring-1 ring-sky-400/10">
+              <TabsTrigger value="interests" className="rounded-lg text-xs font-bold data-[state=active]:bg-sky-400 data-[state=active]:text-white">Interests</TabsTrigger>
+              <TabsTrigger value="clubs" className="rounded-lg text-xs font-bold data-[state=active]:bg-sky-400 data-[state=active]:text-white">Clubs</TabsTrigger>
+              <TabsTrigger value="schedule" className="rounded-lg text-xs font-bold data-[state=active]:bg-sky-400 data-[state=active]:text-white">Schedule</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="interests" className="mt-4">
+              <div className="flex flex-wrap gap-2">
+                {displayInterests.map((interest, i) => (
+                  <span key={i} className="rounded-full bg-sky-400/10 px-3 py-1.5 text-xs font-medium text-sky-600 ring-1 ring-sky-400/20">
+                    {interest}
+                  </span>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="clubs" className="mt-4 space-y-2">
               {displayClubs.map((club, i) => (
-                <div key={i} className="flex items-center gap-2 p-2 bg-secondary/5 rounded border border-secondary/10">
-                  <span className="text-secondary">🏛️</span>
-                  <span>{club}</span>
+                <div key={i} className="rounded-xl bg-white/60 p-3 ring-1 ring-sky-400/10 flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-600">
+                    <Compass className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">{club}</span>
                 </div>
               ))}
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="schedule" className="mt-4">
-            <div className="space-y-2">
-              {sortedTimetable.map((item, i) => (
-                <div key={i} className="flex justify-between items-center p-3 bg-gray-50/50 rounded border border-gray-100">
-                  <div>
-                    <div className="font-medium text-foreground">
-                      {'subject' in (item as any) ? (item as any).subject : (item as any).title}
+            <TabsContent value="schedule" className="mt-4 space-y-3">
+              {sortedTimetable.length > 0 ? (
+                sortedTimetable.map((item: any, i) => (
+                  <div key={i} className="rounded-xl bg-white/60 p-3 ring-1 ring-sky-400/10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-8 bg-sky-400 rounded-full" />
+                      <div>
+                        <div className="text-xs font-bold text-slate-800">
+                          {'subject' in item ? item.subject : item.title}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">{item.day} • {item.time}</div>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">{(item as any).day} • {(item as any).time}</div>
+                    <div className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-md ring-1 ring-slate-100">
+                      {item.location || item.where || 'TBD'}
+                    </div>
                   </div>
-                  <div className="text-sm text-foreground/70">
-                    {'location' in (item as any) ? (item as any).location : (item as any).where || 'TBD'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+                ))
+              ) : (
+                <div className="text-center py-8 text-slate-400 italic text-xs">No schedule shared.</div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     );
   };
 
-  const isAuthorized = true; // Use real auth checks if needed
+  const isAuthorized = !!auth.currentUser;
 
   return (
     <div className="relative bg-sky-50 font-sans text-slate-800 min-h-screen pb-32 overflow-hidden" style={{fontFamily: "'Inter', sans-serif"}}>
@@ -675,14 +703,13 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
               { key: 'sharedCourses', label: 'Courses' },
               { key: 'mutualClubs', label: 'Clubs' },
             ].map(({ key, label }) => {
-                const isActive = (key === 'all' && sortBy === 'name') ? false : sortBy === key;
-                const isAllActive = key === 'all' && (sortBy === 'name' || !sortBy);
-                const active = isActive || isAllActive;
+                const isAll = key === 'all';
+                const active = isAll ? (sortBy === 'name' || !sortBy) : sortBy === key;
                 return (
                     <button
                         key={key}
                         data-testid={`discover-filter-${key}`}
-                        onClick={() => setSortBy(key === 'all' ? 'name' : key)}
+                        onClick={() => setSortBy(isAll ? 'name' : key)}
                         className={`px-5 py-2.5 rounded-full text-sm font-semibold tracking-tight whitespace-nowrap transition-all active:scale-95 ${active ? 'bg-sky-400 text-white shadow-[0_10px_15px_-3px_rgba(56,189,248,0.25),0_4px_6px_-4px_rgba(56,189,248,0.25)]' : 'bg-white text-slate-600 ring-1 ring-sky-400/10 hover:ring-sky-400/30'}`}
                     >
                         {label}
@@ -894,11 +921,11 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
         </section>
       </main>
 
-      {/* FAB for Create Event */}
+      {/* FAB for Create Study Group */}
       {isAuthorized && (
         <button
           data-testid="discover-create-event-fab"
-          onClick={() => setShowCreateEventModal(true)}
+          onClick={() => setShowStudyGroupModal(true)}
           className="fixed bottom-24 right-6 w-16 h-16 bg-sky-400 text-white rounded-full shadow-[0_10px_15px_-3px_rgba(56,189,248,0.3),0_4px_6px_-4px_rgba(56,189,248,0.3),0_0_0_4px_rgba(255,255,255,1)] flex items-center justify-center z-[60] hover:bg-sky-500 active:scale-90 transition-all duration-200"
         >
           <Plus className="w-7 h-7" />
@@ -1000,54 +1027,90 @@ export function DiscoverPage({ currentUser, onOpenProfile, onMessage }: { curren
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showCreateEventModal} onOpenChange={setShowCreateEventModal}>
+      <Dialog open={showStudyGroupModal} onOpenChange={setShowStudyGroupModal}>
         <DialogContent className="glass-panel border-white/50 p-6 rounded-3xl max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-slate-800">Create Campus Event</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-slate-800">Create Study Group</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase">Event Title</label>
-              <Input value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} placeholder="e.g. Midnight Hackathon" className="bg-slate-50 border-slate-200" />
+              <label className="text-xs font-bold text-slate-500 uppercase">Study Topic</label>
+              <Input value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} placeholder="e.g. Physics II Midterm Prep" className="bg-slate-50 border-slate-200" />
             </div>
+            
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase">Description</label>
-              <Input value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} placeholder="What's happening?" className="bg-slate-50 border-slate-200" />
+              <label className="text-xs font-bold text-slate-500 uppercase">Invite a Friend (to check free time)</label>
+              <select 
+                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+                onChange={(e) => {
+                  const friend = friendsUsers.find(f => f.id === e.target.value);
+                  setSelectedFriendForStudy(friend || null);
+                }}
+                value={selectedFriendForStudy?.id || ''}
+              >
+                <option value="">Select a friend...</option>
+                {friendsUsers.filter(u => acceptedFriendIds.has(u.id)).map(friend => (
+                  <option key={friend.id} value={friend.id}>{friend.name}</option>
+                ))}
+              </select>
             </div>
+
+            {selectedFriendForStudy && (
+              <div className="p-4 bg-sky-50 rounded-2xl border border-sky-100">
+                <p className="text-[10px] font-bold text-sky-600 uppercase mb-2">Common Free Slots</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {Object.entries(commonFreeSlots).some(([_, slots]) => slots.length > 0) ? (
+                    Object.entries(commonFreeSlots).map(([day, slots]) => slots.length > 0 && (
+                      <div key={day} className="space-y-1">
+                        <p className="text-[10px] font-bold text-slate-400">{day}</p>
+                        {slots.map((slot, i) => (
+                          <button 
+                            key={i}
+                            onClick={() => setNewEvent({...newEvent, description: `Study session on ${day} at ${formatTimeLabel(slot.start)}`})}
+                            className="w-full text-left px-3 py-1.5 bg-white rounded-lg text-xs hover:bg-sky-100 transition-colors border border-sky-200/50"
+                          >
+                            {formatTimeLabel(slot.start)} - {formatTimeLabel(slot.end)}
+                          </button>
+                        ))}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No common free slots found</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase">Location</label>
-              <Input value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} placeholder="e.g. Student Center" className="bg-slate-50 border-slate-200" />
+              <label className="text-xs font-bold text-slate-500 uppercase">Details (Location/Time)</label>
+              <Input value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} placeholder="e.g. Meet at Library 3rd Floor @ 4pm" className="bg-slate-50 border-slate-200" />
             </div>
+
             <Button 
-              className="w-full h-11 bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-lg mt-2"
+              className="w-full h-11 bg-sky-500 hover:bg-sky-600 text-white rounded-xl shadow-lg mt-2 font-bold"
               onClick={async () => {
                 if (!newEvent.title) return;
-                const start = new Date();
-                start.setHours(start.getHours() + 2);
-                const end = new Date(start);
-                end.setHours(end.getHours() + 2);
                 const { Timestamp } = await import('firebase/firestore');
                 await createCampusEvent({
-                  title: newEvent.title,
+                  title: `📚 Study: ${newEvent.title}`,
                   description: newEvent.description,
-                  location: newEvent.location,
-                  vibeTags: newEvent.vibeTags,
-                  crowdSize: newEvent.crowdSize,
-                  buddyMatchingEnabled: newEvent.buddyMatchingEnabled,
+                  location: selectedFriendForStudy ? `With ${selectedFriendForStudy.name}` : "Group Study",
+                  vibeTags: ["Academic"],
+                  crowdSize: "Small",
+                  buddyMatchingEnabled: true,
                   collegeId: "VIT",
-                  clubName: "Student Organized",
-                  clubId: "student_1",
-                  startTime: Timestamp.fromDate(start),
-                  endTime: Timestamp.fromDate(end),
-                  tags: ["Social"],
+                  clubName: "Study Group",
+                  clubId: "study_group",
+                  startTime: Timestamp.now(),
+                  endTime: Timestamp.fromDate(new Date(Date.now() + 3600000 * 2)),
+                  tags: ["Study", "Academic"],
                 });
-                const evs = await getUpcomingEvents();
-                setEvents(evs);
-                setShowCreateEventModal(false);
+                setShowStudyGroupModal(false);
                 setNewEvent({ title: '', description: '', location: '', vibeTags: [], crowdSize: 'Medium', buddyMatchingEnabled: true });
+                setSelectedFriendForStudy(null);
               }}
             >
-              Publish Event
+              Launch Study Group
             </Button>
           </div>
         </DialogContent>

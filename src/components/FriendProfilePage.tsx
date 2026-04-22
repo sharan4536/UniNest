@@ -1,10 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Badge } from './ui/badge';
+import React, { useEffect, useState, useMemo } from 'react';
+import {
+  ArrowLeft,
+  Clock3,
+  Globe2,
+  Info,
+  Lock,
+  MapPin,
+  Sparkles,
+  MessageSquare,
+  UserPlus,
+  Calendar,
+  Compass,
+  Star,
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { getFriendTimetable, type ClassItem, getEnhancedFriendProfile, type EnhancedFriendProfile, getProfile, loadTimetable, createConversation } from '../utils/firebase/firestore';
+import { Card, CardContent } from './ui/card';
+import { MutualFreeTime } from './MutualFreeTime';
+import { formatEmailToName } from '../utils/nameUtils';
+import { 
+  getFriendTimetable, 
+  type ClassItem, 
+  getEnhancedFriendProfile, 
+  type EnhancedFriendProfile, 
+  getProfile, 
+  loadTimetable, 
+  createConversation,
+  getFriends,
+  type UserProfile
+} from '../utils/firebase/firestore';
+import { WEEKDAYS, getTodayKey, type DayKey, computeCommonFreeSlots, formatTimeLabel, isBothFreeNow } from '../utils/scheduleCompare';
 
 type FriendUser = {
   id?: string;
@@ -16,51 +43,52 @@ type FriendUser = {
   email?: string;
   bio?: string;
   interests?: string[];
-  clubs?: string[]; // extended
+  clubs?: string[];
   sharedCourses?: string[];
-  timetable?: Array<{ day: string; time: string; title: string; where?: string }>; // extended
-  course?: string; // coursemate specific
-  studyGroup?: string | null; // coursemate specific
+  timetable?: Array<{ day: string; time: string; title: string; where?: string }>;
+  course?: string;
+  studyGroup?: string | null;
+  photoURL?: string;
 };
 
-export function FriendProfilePage({ user, onBack, onMessage }: { user: FriendUser; onBack: () => void; onMessage?: () => void }) {
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="mb-4">No profile selected.</div>
-            <Button onClick={onBack} className="w-full bg-primary/20 text-primary hover:bg-primary/30">
-              Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+type TabKey = 'interests' | 'clubs' | 'schedule' | 'mutual';
 
-  // Load the latest timetable for the friend to avoid stale data
+const tabLabels: Array<{ id: TabKey; label: string }> = [
+  { id: 'schedule', label: 'Schedule' },
+  { id: 'mutual', label: 'Mutual' },
+  { id: 'interests', label: 'Interests' },
+  { id: 'clubs', label: 'Clubs' },
+];
+
+export function FriendProfilePage({ user, onBack, onMessage }: { user: FriendUser; onBack: () => void; onMessage?: () => void }) {
+  const [activeTab, setActiveTab] = useState<TabKey>('schedule');
   const [latestTimetable, setLatestTimetable] = useState<Array<{ day: string; time: string; title: string; where?: string }>>(user.timetable || []);
   const [enhanced, setEnhanced] = useState<EnhancedFriendProfile | null>(null);
   const [profileDoc, setProfileDoc] = useState<any>(null);
   const [friendTimetable, setFriendTimetable] = useState<Record<string, ClassItem[]>>({});
   const [currentUserTimetable, setCurrentUserTimetable] = useState<Record<string, ClassItem[]>>({});
-
-  // Reference time grid to compute free slots
-  const timeSlots = [
-    '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-    '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM'
-  ];
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const [loading, setLoading] = useState(true);
+  const [isFriend, setIsFriend] = useState<boolean>(false);
 
   useEffect(() => {
-    const loadLatest = async () => {
+    const loadAllData = async () => {
+      if (!user.id) return;
+      setLoading(true);
       try {
-        if (!user.id) return;
-        const raw = await getFriendTimetable(user.id);
-        setFriendTimetable(raw || {});
+        const [rawTimetable, enhancedProfile, profile, myTimetable] = await Promise.all([
+          getFriendTimetable(user.id),
+          getEnhancedFriendProfile(user.id),
+          getProfile(user.id),
+          loadTimetable()
+        ]);
+
+        setFriendTimetable(rawTimetable || {});
+        setEnhanced(enhancedProfile || null);
+        setProfileDoc(profile || null);
+        setCurrentUserTimetable(myTimetable || {});
+
         const arr: Array<{ day: string; time: string; title: string; where?: string }> = [];
-        Object.entries(raw).forEach(([day, classes]) => {
+        Object.entries(rawTimetable || {}).forEach(([day, classes]) => {
           (classes as ClassItem[]).forEach((c) => {
             arr.push({
               day,
@@ -70,443 +98,320 @@ export function FriendProfilePage({ user, onBack, onMessage }: { user: FriendUse
             });
           });
         });
-        // Only overwrite if we actually loaded timetable entries.
-        // This prevents clearing a previously provided timetable (e.g., passed in via navigation)
-        if (arr.length > 0) {
-          setLatestTimetable(arr);
-        }
+        if (arr.length > 0) setLatestTimetable(arr);
       } catch (e) {
-        console.warn('Failed to load latest friend timetable', e);
+        console.warn('Failed to load friend data', e);
+      } finally {
+        setLoading(false);
       }
     };
-    loadLatest();
+    loadAllData();
   }, [user.id]);
 
-  // Load enhanced profile details to display all available information
   useEffect(() => {
-    const loadEnhanced = async () => {
-      try {
-        if (!user.id) return;
-        const e = await getEnhancedFriendProfile(user.id);
-        setEnhanced(e || null);
-        try {
-          const p = await getProfile(user.id);
-          setProfileDoc(p || null);
-        } catch { }
-      } catch (err) {
-        console.warn('Failed to load enhanced friend profile', err);
-      }
+    if (!user.id) return;
+    const unsubscribe = getFriends((friendsList) => {
+      setIsFriend(friendsList.some(f => f.uid === user.id));
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
-    loadEnhanced();
   }, [user.id]);
 
-  // Load current user's timetable to compare
-  useEffect(() => {
-    const loadMyTimetable = async () => {
-      try {
-        const myTimetable = await loadTimetable();
-        setCurrentUserTimetable(myTimetable || {});
-      } catch (e) {
-        console.warn('Failed to load current user timetable', e);
-      }
-    };
-    loadMyTimetable();
-  }, []);
-
-  const displayName = (profileDoc?.name || user.name || user.displayName || 'User');
-  const displayMajor = (profileDoc?.major ?? enhanced?.major ?? user.major ?? 'Major');
-  const displayYear = (profileDoc?.year ?? enhanced?.year ?? user.year ?? 'Year');
-  const displayUniversity = (profileDoc?.university ?? enhanced?.university ?? user.university ?? 'University');
-  const displayEmail = (enhanced?.email ?? user.email ?? undefined);
-  const displayBio = (profileDoc?.bio ?? enhanced?.bio ?? user.bio ?? undefined);
+  const displayName = formatEmailToName(profileDoc?.name || user.name || user.displayName);
+  const displayMajor = profileDoc?.major ?? enhanced?.major ?? user.major ?? 'Major';
+  const displayYear = profileDoc?.year ?? enhanced?.year ?? user.year ?? 'Year';
+  const displayUniversity = profileDoc?.university ?? enhanced?.university ?? user.university ?? 'University';
+  const displayBio = profileDoc?.bio ?? enhanced?.bio ?? user.bio ?? 'Passionate about building, exploring ideas, and finding creative people on campus.';
   const displayInterests = (profileDoc?.interests ?? enhanced?.interests ?? user.interests ?? []).filter(Boolean);
   const displayClubs = (profileDoc?.clubs ?? enhanced?.clubs ?? user.clubs ?? []).filter(Boolean);
-  const displaySharedCourses = (user.sharedCourses ?? enhanced?.sharedCourses ?? []).filter(Boolean);
-  const displayTimetable = (latestTimetable && latestTimetable.length > 0)
-    ? latestTimetable
-    : ((enhanced?.timetable ?? user.timetable ?? []).filter(Boolean));
+  const photoURL = profileDoc?.photoURL || (user as any).photoURL;
 
-  // Build a usable timetable source (prefer Firestore structure; fallback to enhanced array)
-  const sourceTimetable = React.useMemo((): Record<string, ClassItem[]> => {
-    if (Object.keys(friendTimetable).length > 0) return friendTimetable;
-    const t: Record<string, ClassItem[]> = {};
-    displayTimetable.forEach((s) => {
-      const day = s.day;
-      const entry: ClassItem = {
-        id: Math.floor(Math.random() * 1000000),
-        course: s.title || 'Class',
-        title: s.title || 'Class',
-        time: s.time,
-        duration: 1,
-        location: s.where || '',
-      } as ClassItem;
-      t[day] = [...(t[day] || []), entry];
-    });
-    return t;
-  }, [friendTimetable, displayTimetable]);
+  // Timetable processing
+  const scheduleItems = useMemo(() => {
+    return latestTimetable.map((item, idx) => ({
+      key: `item-${idx}`,
+      day: item.day,
+      time: item.time,
+      title: item.title,
+      place: item.where || 'TBD',
+    }));
+  }, [latestTimetable]);
 
-  // Helper to calculate free slots for any timetable
-  const calculateFreeSlots = (timetable: Record<string, ClassItem[]>) => {
-    const result: Record<string, string[]> = {};
-    days.forEach((day) => {
-      const classes = (timetable[day] || []) as ClassItem[];
-      const occupied = new Set<number>();
-      classes.forEach((cls) => {
-        const startIdx = timeSlots.indexOf(cls.time);
-        if (startIdx !== -1) {
-          const span = Math.max(1, Math.ceil(cls.duration || 1));
-          for (let i = 0; i < span && (startIdx + i) < timeSlots.length; i++) {
-            occupied.add(startIdx + i);
-          }
-        }
-      });
-      result[day] = timeSlots.filter((_, idx) => !occupied.has(idx));
-    });
-    return result;
-  };
-
-  // Compute free slots for friend
-  const freeSlotsByDay = React.useMemo(() => calculateFreeSlots(sourceTimetable), [sourceTimetable]);
-
-  // Compute free slots for current user
-  const myFreeSlotsByDay = React.useMemo(() => calculateFreeSlots(currentUserTimetable), [currentUserTimetable]);
-
-  // Compute mutual free slots
-  const mutualFreeSlots = React.useMemo(() => {
-    const result: Record<string, string[]> = {};
-    days.forEach((day) => {
-      const friendSlots = freeSlotsByDay[day] || [];
-      const mySlots = myFreeSlotsByDay[day] || [];
-      // Intersection of free slots
-      result[day] = friendSlots.filter(slot => mySlots.includes(slot));
-    });
-    return result;
-  }, [freeSlotsByDay, myFreeSlotsByDay]);
-
-  // Check if both are free RIGHT NOW
-  const isBothFreeNow = React.useMemo(() => {
-    const now = new Date();
-    const currentDayIndex = now.getDay(); // 0 = Sunday, 1 = Monday...
-    // Adjust logic: days array is ['Monday', 'Tuesday'...]
-    // getDay returns 0 for Sunday.
-    // Map getDay() to our days array index:
-    // 0 (Sun) -> 6, 1 (Mon) -> 0...
-    const mapDayIndex = (dayIdx: number) => {
-      if (dayIdx === 0) return 6; // Sunday is last in our array
-      return dayIdx - 1; // Mon(1) -> 0
-    };
-
-    const dayName = days[mapDayIndex(currentDayIndex)];
-    if (!dayName) return false;
-
-    const currentHour = now.getHours();
-
-    // Find matching slot
-    // timeSlots are "8:00 AM", "9:00 AM"...
-    // We need to match currentHour to a slot. 
-    // E.g. 13:45 -> 13:00 -> "1:00 PM"
-
-    // Simple logic: check if current hour exists in mutualFreeSlots[dayName]
-    const formatHourToSlot = (h: number) => {
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      let hour12 = h % 12;
-      if (hour12 === 0) hour12 = 12;
-      return `${hour12}:00 ${ampm}`;
-    };
-
-    const currentSlot = formatHourToSlot(currentHour);
-
-    return mutualFreeSlots[dayName]?.includes(currentSlot);
-  }, [mutualFreeSlots]);
-
-  // Robust time parser supporting both 12h (with AM/PM) and 24h formats
-  const toMinutes = (t?: string): number => {
-    if (!t) return 24 * 60;
-    const twelve = t.trim().match(/^([0-9]{1,2}):([0-9]{2})\s*(AM|PM)$/i);
-    if (twelve) {
-      let hh = parseInt(twelve[1], 10);
-      const mm = parseInt(twelve[2], 10);
-      const ap = twelve[3].toUpperCase();
-      if (ap === 'AM') {
-        if (hh === 12) hh = 0;
-      } else {
-        if (hh !== 12) hh += 12;
+  const scheduleByDay = useMemo(() => {
+    const parseStart = (maybeTime?: string) => {
+      if (!maybeTime) return 24 * 60;
+      const m12 = maybeTime.match(/^([0-9]{1,2}):([0-9]{2})\s*(AM|PM)$/i);
+      if (m12) {
+        let hh = parseInt(m12[1], 10);
+        const mm = parseInt(m12[2], 10);
+        const ap = m12[3].toUpperCase();
+        if (ap === 'AM' && hh === 12) hh = 0;
+        if (ap === 'PM' && hh !== 12) hh += 12;
+        return hh * 60 + mm;
       }
-      return hh * 60 + mm;
-    }
-    const twentyFour = t.trim().match(/^([0-9]{1,2}):([0-9]{2})$/);
-    if (twentyFour) {
-      const hh = parseInt(twentyFour[1], 10);
-      const mm = parseInt(twentyFour[2], 10);
-      return hh * 60 + mm;
-    }
-    return 24 * 60; // unknown format goes to end
-  };
+      return 24 * 60;
+    };
 
-  const sortByTime = (items: ClassItem[]) => {
-    return [...items].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
-  };
+    const grouped = {} as Record<DayKey, typeof scheduleItems>;
+    WEEKDAYS.forEach(day => grouped[day] = []);
+    scheduleItems.forEach(item => {
+      const key = (item.day || '').slice(0, 3).toUpperCase() as DayKey;
+      if (grouped[key]) grouped[key].push(item);
+    });
+    WEEKDAYS.forEach(day => {
+      grouped[day] = [...grouped[day]].sort((a, b) => parseStart(a.time) - parseStart(b.time));
+    });
+    return grouped;
+  }, [scheduleItems]);
 
-  const aboutRows: Array<{ label: string; value?: string }> = [
-    { label: 'University', value: displayUniversity || '—' },
-    { label: 'Major', value: displayMajor || '—' },
-    { label: 'Year', value: displayYear || '—' },
-    { label: 'Email', value: displayEmail || '—' },
-    { label: 'Study Group', value: user.studyGroup || undefined },
-  ];
+  const bothFreeNow = useMemo(() => {
+    return isBothFreeNow(currentUserTimetable, friendTimetable);
+  }, [currentUserTimetable, friendTimetable]);
 
-  return (
-    <div className="min-h-screen pb-24">
-      {/* Header with Back Button */}
-      <div className="glass-header sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur-md">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={onBack}
-            className="flex items-center gap-2 hover:bg-gray-100 text-foreground"
-          >
-            ← Back
-          </Button>
-          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Friend Profile</h1>
-          <div className="w-16"></div> {/* Spacer for centering */}
+  const todayKey = getTodayKey();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-sky-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-500 font-medium">Syncing profile...</p>
         </div>
       </div>
+    );
+  }
 
-      <div className="max-w-4xl mx-auto p-4 space-y-6 mt-4">
-        {/* Profile Header Card */}
-        <Card className="overflow-hidden glass-card border-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="relative h-40 bg-gradient-to-r from-sky-200 via-blue-100 to-indigo-200">
-            <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]"></div>
-          </div>
-          <CardContent className="relative pt-0 pb-8">
-            {/* Avatar positioned over the gradient */}
-            <div className="flex justify-center -mt-20 mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-sky-400/20 rounded-full blur-2xl animate-pulse"></div>
-                <div className="rounded-full p-2 bg-white/80 backdrop-blur-md border border-white shadow-xl relative z-10">
-                  <Avatar className="w-32 h-32 border-[4px] border-white shadow-inner">
-                    <AvatarFallback className="text-4xl font-bold bg-gradient-to-br from-sky-100 to-blue-200 text-sky-600">
-                      {(user.name || user.displayName || '?').charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {isBothFreeNow && (
-                    <div className="absolute -top-2 -right-2 z-20">
-                      <Badge className="bg-green-500 hover:bg-green-600 text-white border-2 border-white shadow-lg px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                        ✨ Both Free!
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+  return (
+    <div className="relative min-h-screen overflow-x-hidden bg-sky-50 text-slate-800" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Ambient blurs */}
+      <div aria-hidden className="pointer-events-none absolute -top-48 left-[55%] w-48 h-48 bg-sky-400/10 rounded-full blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute top-[900px] -left-10 w-48 h-48 bg-violet-500/5 rounded-full blur-3xl" />
 
-            {/* User Info */}
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold text-slate-800 tracking-tight">{displayName}</h2>
-              <div className="flex items-center justify-center gap-3 flex-wrap">
-                <Badge variant="secondary" className="bg-white/60 text-slate-600 border border-white shadow-sm hover:bg-white transition-colors py-1 px-3">{displayUniversity}</Badge>
-                <Badge variant="secondary" className="bg-white/60 text-slate-600 border border-white shadow-sm hover:bg-white transition-colors py-1 px-3">{displayMajor}</Badge>
-                <Badge variant="secondary" className="bg-white/60 text-slate-600 border border-white shadow-sm hover:bg-white transition-colors py-1 px-3">{displayYear}</Badge>
-              </div>
-              {displayBio && (
-                <div className="max-w-lg mx-auto mt-4 px-6 py-4 bg-sky-50/50 rounded-2xl border border-sky-100">
-                  <p className="text-sm text-slate-600 leading-relaxed italic">
-                    "{displayBio}"
-                  </p>
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-sky-400/10 bg-white/60 px-5 py-3 backdrop-blur-md">
+        <button
+          onClick={onBack}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white ring-2 ring-sky-400/20 text-sky-600 hover:bg-sky-50 transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+
+        <div className="text-lg font-bold tracking-tight text-sky-400" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          Friend Profile
+        </div>
+
+        <div className="w-9" /> {/* Spacer */}
+      </header>
+
+      <section className="relative mx-auto w-full max-w-2xl px-4 pb-16 pt-6 sm:px-6 sm:pt-8">
+        <div className="rounded-[2rem] bg-white/70 px-5 py-6 shadow-[0_10px_40px_rgba(56,189,248,0.08)] ring-1 ring-sky-400/10 backdrop-blur-[12px] sm:px-7 sm:py-8">
+          <header className="flex flex-col items-center text-center">
+            <div className="group relative">
+              <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-sky-400 to-sky-200 opacity-30 blur-sm transition-opacity" />
+              <Avatar className="relative h-24 w-24 border-4 border-white shadow-xl">
+                <AvatarImage src={photoURL} alt={displayName} className="object-cover" />
+                <AvatarFallback className="bg-sky-100 text-2xl font-bold text-sky-700">
+                  {displayName.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              {bothFreeNow && (
+                <div className="absolute -top-1 -right-1 z-20">
+                  <Badge className="bg-emerald-500 text-white border-2 border-white shadow-lg px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    Free Now
+                  </Badge>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Action Buttons */}
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 fill-mode-both" style={{ animationDelay: '100ms' }}>
-          <Button
-            onClick={async () => {
-              if (user.id) {
-                await createConversation(user.id);
-                if (onMessage) onMessage();
-              }
-            }}
-            className="h-12 text-sm font-bold bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white shadow-lg shadow-sky-200/50 hover:scale-[1.02] transition-all rounded-xl"
-          >
-            💬 Message
-          </Button>
-          <Button
-            variant="outline"
-            className="h-12 text-sm font-bold border-white bg-white/50 hover:bg-white text-slate-600 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all rounded-xl"
-          >
-            ➕ Add Friend
-          </Button>
-        </div>
-
-        {/* Quick Info Card */}
-        <Card className="glass-card border-none shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-primary">Quick Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {aboutRows.map((row, idx) => (
-                row.value && (
-                  <div key={idx} className="flex flex-col p-3 rounded-xl bg-gray-50/50 border border-gray-200">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{row.label}</span>
-                    {row.label === 'Email' && row.value && row.value !== '—' ? (
-                      <a href={`mailto:${row.value}`} className="text-primary hover:underline truncate">{row.value}</a>
-                    ) : (
-                      <span className="text-foreground font-medium truncate">{row.value}</span>
-                    )}
-                  </div>
-                )
-              ))}
+            <div className="mt-3">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 sm:text-3xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                {displayName}
+              </h1>
+              <p className="mt-1 text-sm font-medium text-slate-500">{displayMajor} • Year {displayYear}</p>
             </div>
 
-            {displaySharedCourses && displaySharedCourses.length > 0 && (
-              <div className="pt-4 border-t border-gray-100">
-                <div className="text-sm font-semibold mb-3 text-primary">Shared Courses</div>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
+              {enhanced?.mutualFriends !== undefined && (
+                <span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-600 ring-1 ring-sky-400/20">{enhanced.mutualFriends} mutual friends</span>
+              )}
+              <span className="rounded-full bg-white px-3 py-1 text-slate-600 ring-1 ring-sky-400/10">
+                {displayUniversity}
+              </span>
+            </div>
+
+            <div className="mt-5 w-full flex gap-3 max-w-sm">
+              <Button
+                onClick={async () => {
+                  if (user.id) {
+                    await createConversation(user.id);
+                    if (onMessage) onMessage();
+                  }
+                }}
+                className="h-11 flex-1 rounded-2xl bg-sky-400 text-sm font-bold text-white shadow-[0_10px_15px_-3px_rgba(56,189,248,0.3),0_4px_6px_-4px_rgba(56,189,248,0.3)] hover:bg-sky-500"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" /> Message
+              </Button>
+              {isFriend ? (
+                <div className="flex-1 flex items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 font-bold text-sm border border-emerald-100 shadow-sm">
+                  <Star className="mr-1.5 h-3.5 w-3.5 fill-current" /> Friends
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="h-11 flex-1 rounded-2xl border-sky-400/20 bg-white text-sm font-bold text-sky-600 hover:bg-sky-50"
+                  onClick={async () => {
+                    if (user.id) {
+                      const { sendFriendRequest } = await import('../utils/firebase/firestore');
+                      await sendFriendRequest(user.id);
+                    }
+                  }}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" /> Add Friend
+                </Button>
+              )}
+            </div>
+          </header>
+
+          <div className="mt-6 grid gap-2.5 sm:grid-cols-3">
+            <InfoChip icon={Globe2} label="Campus" value={displayUniversity} />
+            <InfoChip icon={MapPin} label="Major" value={displayMajor} />
+            <InfoChip icon={Sparkles} label="Year" value={displayYear} />
+          </div>
+
+          <nav className="mt-6">
+            <div className="flex items-center justify-between rounded-2xl bg-white/60 p-1 ring-1 ring-sky-400/10 overflow-x-auto no-scrollbar">
+              {tabLabels.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 min-w-[80px] rounded-xl px-2 py-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-sky-400 text-white shadow-[0_4px_6px_-4px_rgba(56,189,248,0.3)]'
+                      : 'text-slate-600 hover:bg-sky-50'
+                  }`}
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <section className="mt-6">
+            {activeTab === 'schedule' && (
+              <div className="space-y-4">
+                {Object.keys(scheduleByDay).length === 0 ? (
+                  <div className="rounded-[1.25rem] bg-white/60 ring-1 ring-sky-400/10 p-4 text-center">
+                    <p className="text-sm font-semibold text-slate-800">No schedule shared</p>
+                  </div>
+                ) : (
+                  WEEKDAYS.map((day) => {
+                    const items = scheduleByDay[day];
+                    const isToday = todayKey === day;
+                    return (
+                      <div
+                        key={day}
+                        className={`rounded-[1.25rem] p-4 ring-1 transition ${
+                          isToday ? 'bg-white ring-sky-400/40 shadow-sm' : 'bg-white/60 ring-sky-400/10'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className={`text-sm font-extrabold tracking-tight ${isToday ? 'text-sky-600' : 'text-slate-800'}`}>
+                            {day} {isToday && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest text-sky-500 align-middle">Today</span>}
+                          </h3>
+                        </div>
+                        {items.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic">No classes.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {items.map((item, i) => (
+                              <div key={i} className="flex gap-3">
+                                <div className="mt-1 h-4 w-4 shrink-0 rounded-full border-[3px] border-white bg-sky-400 shadow-sm" />
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-bold text-slate-800 leading-tight">{item.title}</h4>
+                                  <div className="mt-1 flex items-center gap-3 text-slate-500">
+                                    <span className="text-[11px] font-medium flex items-center gap-1"><Clock3 className="h-3 w-3" /> {item.time}</span>
+                                    <span className="text-[11px] font-medium flex items-center gap-1"><MapPin className="h-3 w-3" /> {item.place}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {activeTab === 'mutual' && (
+              <MutualFreeTime 
+                currentUserTimetable={currentUserTimetable}
+                friendTimetable={friendTimetable}
+                friendName={displayName}
+                onStartChat={async () => {
+                  if (user.id) {
+                    await createConversation(user.id);
+                    if (onMessage) onMessage();
+                  }
+                }}
+                onPlanHangout={() => {
+                  // This could open a calendar or event creation sheet
+                  // For now, let's keep it simple or just show a message
+                  alert("Hangout planner coming soon!");
+                }}
+              />
+            )}
+
+            {activeTab === 'interests' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-white/60 rounded-2xl ring-1 ring-sky-400/10">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">About</h3>
+                  <p className="text-sm leading-relaxed text-slate-600 italic">"{displayBio}"</p>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {displaySharedCourses.slice(0, 6).map((course, i) => (
-                    <Badge key={i} variant="secondary" className="bg-secondary/10 text-secondary border-secondary/30">
-                      {course}
-                    </Badge>
+                  {displayInterests.map((interest: string, i: number) => (
+                    <span key={i} className="rounded-full bg-sky-400/10 px-3 py-1.5 text-sm font-medium text-sky-600 ring-1 ring-sky-400/20">
+                      {interest}
+                    </span>
                   ))}
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Details Tabs */}
-        <Card className="glass-card border-none shadow-lg">
-          <CardContent className="p-0">
-            <Tabs defaultValue="timetable" className="w-full">
-              <div className="border-b border-gray-100 bg-gray-50/50">
-                <TabsList className="grid grid-cols-4 w-full h-12 bg-transparent rounded-none">
-                  <TabsTrigger value="timetable" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-white data-[state=active]:text-primary">
-                    Timetable
-                  </TabsTrigger>
-                  <TabsTrigger value="mutual" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-white data-[state=active]:text-indigo-500">
-                    Mutual
-                  </TabsTrigger>
-                  <TabsTrigger value="interests" className="rounded-none border-b-2 border-transparent data-[state=active]:border-secondary data-[state=active]:bg-white data-[state=active]:text-secondary">
-                    Interests
-                  </TabsTrigger>
-                  <TabsTrigger value="clubs" className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-white data-[state=active]:text-green-500">
-                    Clubs
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <div className="p-6">
-                <TabsContent value="timetable" className="mt-0">
-                  {Object.keys(sourceTimetable).length > 0 || displayTimetable.length > 0 ? (
-                    <div className="space-y-6">
-                      {days.map((day) => {
-                        const classes = sourceTimetable[day] || [];
-                        const hasClasses = classes.length > 0;
-                        return (
-                          <div key={day}>
-                            <div className="text-sm font-bold mb-3 text-primary uppercase tracking-wider">{day}</div>
-                            {hasClasses ? (
-                              <div className="space-y-3">
-                                {sortByTime(classes).map((cls, idx) => (
-                                  <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100 hover:border-primary/30 transition-colors shadow-sm">
-                                    <div className="flex flex-col items-center justify-center min-w-[5rem] h-12 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                      <span className="text-sm font-bold text-primary">{cls.time}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-bold text-foreground truncate">{cls.title || cls.course}</div>
-                                      {cls.location && (
-                                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">📍 {cls.location}</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="flex flex-wrap gap-2">
-                                {(freeSlotsByDay[day] || []).map((time, i) => (
-                                  <Badge key={i} variant="outline" className="px-3 py-1 border-gray-200 bg-gray-50 text-muted-foreground/70">🕘 Free at {time}</Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground/50 border border-dashed border-gray-200 rounded-xl">
-                      <p>No timetable shared</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="mutual" className="mt-0">
-                  <div className="space-y-6">
-                    <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-800 text-sm mb-4">
-                      <p className="font-semibold">🤝 Mutual Availability</p>
-                      <p className="opacity-80">These are the times when both you and {displayName.split(' ')[0]} are free.</p>
-                    </div>
-                    {days.map((day) => {
-                      const slots = mutualFreeSlots[day] || [];
-                      const hasSlots = slots.length > 0;
-                      if (!hasSlots) return null; // Hide days with no mutual slots? Or custom message
-                      return (
-                        <div key={day}>
-                          <div className="text-sm font-bold mb-3 text-indigo-600 uppercase tracking-wider">{day}</div>
-                          <div className="flex flex-wrap gap-2">
-                            {slots.map((time, i) => (
-                              <Badge key={i} variant="outline" className="px-3 py-1 border-indigo-200 bg-indigo-50 text-indigo-700 font-medium">✨ {time}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {Object.values(mutualFreeSlots).every(s => s.length === 0) && (
-                      <div className="text-center py-12 text-muted-foreground/50 border border-dashed border-gray-200 rounded-xl">
-                        <p>No mutual free slots found this week</p>
+            {activeTab === 'clubs' && (
+              <div className="space-y-3">
+                {displayClubs.length > 0 ? (
+                  displayClubs.map((club: string, i: number) => (
+                    <div key={i} className="rounded-[1.25rem] bg-white/60 ring-1 ring-sky-400/10 p-4 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-600">
+                        <Compass className="w-4 h-4" />
                       </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="interests" className="mt-0">
-                  {displayInterests.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {displayInterests.map((interest: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="px-3 py-1 bg-secondary/10 text-secondary border-secondary/30 hover:bg-secondary/20 scale-100 hover:scale-105 transition-transform">
-                          ⭐ {interest}
-                        </Badge>
-                      ))}
+                      <span className="text-sm font-bold text-slate-800">{club}</span>
                     </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground/50 border border-dashed border-gray-200 rounded-xl">
-                      <p>No interests shared</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="clubs" className="mt-0">
-                  {displayClubs.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {displayClubs.map((club: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="px-3 py-1 bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20 scale-100 hover:scale-105 transition-transform">
-                          🎯 {club}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground/50 border border-dashed border-gray-200 rounded-xl">
-                      <p>No clubs shared</p>
-                    </div>
-                  )}
-                </TabsContent>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-slate-400 italic">No clubs joined yet.</div>
+                )}
               </div>
-            </Tabs>
-          </CardContent>
-        </Card>
+            )}
+          </section>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function InfoChip({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center rounded-[1.5rem] bg-white/60 p-3 ring-1 ring-sky-400/10 transition-colors hover:bg-white">
+      <div className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-sky-400/10 text-sky-500">
+        <Icon className="h-4 w-4" />
       </div>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</span>
+      <span className="mt-0.5 text-xs font-bold text-slate-700 truncate w-full text-center px-1">{value}</span>
     </div>
   );
 }

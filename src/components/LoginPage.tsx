@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { auth, db, isFirebaseConfigured } from '../utils/firebase/client';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { formatEmailToName } from '../utils/nameUtils';
 
 export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
   const [email, setEmail] = useState('');
@@ -48,6 +49,22 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
     setError('');
     setInfo('');
 
+      // Admin Bypass for Testing
+      if (email.trim().toLowerCase() === 'admin@uninest.edu' && password === 'admin123') {
+        const adminProfile = {
+          uid: 'admin-dev-id',
+          id: 'admin-dev-id',
+          name: 'System Admin',
+          email: 'admin@uninest.edu',
+          university: 'UniNest HQ',
+          isAdmin: true,
+          isDevelopmentUser: true
+        };
+        onLogin(adminProfile);
+        setLoading(false);
+        return;
+      }
+
     try {
       if (isSignUp) {
         const allowedDomain = '@vitstudent.ac.in';
@@ -81,10 +98,13 @@ export function LoginPage({ onLogin }: { onLogin: (profile: any) => void }) {
             setError('Please verify your email address. Check your inbox for a verification email.');
             return;
           }
-          const uid = creds.user.uid;
-          const snap = await getDoc(doc(db, 'profiles', uid));
-          const profile = snap.exists() ? snap.data() : { id: uid, name: 'New User' };
-          onLogin(profile);
+            const uid = creds.user.uid;
+            const snap = await getDoc(doc(db, 'profiles', uid));
+            const profile = snap.exists() ? snap.data() : { 
+              id: uid, 
+              name: formatEmailToName(creds.user.displayName || creds.user.email)
+            };
+            onLogin(profile);
           return;
         } catch (firebaseError: any) {
           console.error('Firebase auth error:', firebaseError);

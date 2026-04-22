@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, Compass, Home, MapPinned, MessageCircle, UserRound } from 'lucide-react';
+import { CalendarDays, Compass, Home, MapPinned, MessageCircle, UserRound, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -12,17 +12,23 @@ const navigationItems: NavItem[] = [
   { id: 'timetable', label: 'Timetable', mobileLabel: 'Timetable', icon: CalendarDays },
   { id: 'messages', label: 'Messages', mobileLabel: 'Spaces', icon: MessageCircle },
   { id: 'profile', label: 'Profile', mobileLabel: 'Me', icon: UserRound },
+  { id: 'admin', label: 'Admin', mobileLabel: 'Admin', icon: ShieldCheck },
 ];
 
 export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser }: {
   currentPage: string;
   setCurrentPage: (id: string) => void;
   onLogout: () => void;
-  currentUser?: { name?: string; displayName?: string; university?: string } | null;
+  currentUser?: { name?: string; displayName?: string; university?: string, isAdmin?: boolean } | null;
 }) {
   const [pendingRequestsCount, setPendingRequestsCount] = React.useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = React.useState(0);
   const [userStatus, setUserStatus] = React.useState<string | null>(null);
+
+  // Filter navigation items based on admin status
+  const visibleNavigationItems = navigationItems.filter(item => 
+    item.id !== 'admin' || currentUser?.isAdmin
+  );
 
   React.useEffect(() => {
     // Subscribe to pending friend requests
@@ -74,7 +80,7 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
           {/* Navigation Links */}
           <div className="flex flex-col gap-1.5">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 ms-2">Menu</div>
-            {navigationItems.map((item) => (
+            {visibleNavigationItems.map((item) => (
               <Button
                 key={item.id}
                 variant="ghost"
@@ -129,7 +135,7 @@ export function Navigation({ currentPage, setCurrentPage, onLogout, currentUser 
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 pb-[env(safe-area-inset-bottom)]">
         <div className="relative w-full rounded-t-[32px] bg-white/80 shadow-[0_-8px_32px_rgba(41,48,48,0.05)] backdrop-blur-[32px]">
           <div className="grid h-24 w-full grid-cols-5 items-start px-2 pt-4">
-          {navigationItems.map((item) => (
+          {visibleNavigationItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setCurrentPage(item.id)}

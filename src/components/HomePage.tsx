@@ -10,10 +10,16 @@ import {
   getCurrentLocation,
   getFriendLocations,
   getPulses,
+  getUpcomingEventsRealtime,
   updateUserLocation,
+  getActiveAds,
+  recordAdImpression,
+  recordAdClick,
   type CheckIn,
   type FriendLocation,
   type Pulse,
+  type Advertisement,
+  type CampusEvent,
 } from '../utils/firebase/firestore';
 import { PulseSheet } from './PulseSheet';
 import { CheckInSheet } from './CheckInSheet';
@@ -32,68 +38,11 @@ type HomePageProps = {
   onNavigate?: (page: string) => void;
 };
 
-type FriendMarker = {
-  id: string;
-  name: string;
-  vibe: string;
-  image: string;
-  accent: string;
-  lat: number;
-  lng: number;
-};
-
-const friendMarkers: FriendMarker[] = [
-  {
-    id: 'marcus',
-    name: 'Marcus',
-    vibe: 'Studying',
-    image:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-    accent: 'ring-sky-400/60',
-    lat: 12.9715,
-    lng: 79.1586,
-  },
-  {
-    id: 'elena',
-    name: 'Elena',
-    vibe: 'At Library',
-    image:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-    accent: 'ring-cyan-400/60',
-    lat: 12.9731,
-    lng: 79.1623,
-  },
-  {
-    id: 'jordan',
-    name: 'Jordan',
-    vibe: 'Coffee Run',
-    image:
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80',
-    accent: 'ring-sky-300/70',
-    lat: 12.9679,
-    lng: 79.1645,
-  },
-];
-
-const nearbyEvents = [
-  {
-    title: 'Study Mixer',
-    subtitle: 'Central Park • 2m ago',
-    icon: Coffee,
-    iconClass: 'bg-indigo-100 text-indigo-700',
-  },
-  {
-    title: 'Stacks Sprint',
-    subtitle: 'Main Library • Live',
-    icon: LibraryBig,
-    iconClass: 'bg-sky-100 text-sky-700',
-  },
-];
-
 export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePageProps) {
   const [mapCenter, setMapCenter] = useState({ lat: 12.969728, lng: 79.160694 });
   const [mapLabel, setMapLabel] = useState(currentUser?.location?.name || 'VIT Campus');
   const [liveFriendLocations, setLiveFriendLocations] = useState<FriendLocation[]>([]);
+  const [nearbyEvents, setNearbyEvents] = useState<CampusEvent[]>([]);
 
   const firstName =
     currentUser?.name?.split(' ')[0] ||
@@ -129,9 +78,15 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
   useEffect(() => {
     if (!(isFirebaseConfigured && auth.currentUser?.emailVerified)) return;
     const unsubscribe = getFriendLocations((locations) => {
-      setLiveFriendLocations(locations.slice(0, 3));
+      setLiveFriendLocations(locations);
     });
-    return () => unsubscribe();
+    const unsubscribeEvents = getUpcomingEventsRealtime((events) => {
+      setNearbyEvents(events.slice(0, 3));
+    });
+    return () => {
+      unsubscribe();
+      unsubscribeEvents();
+    };
   }, []);
 
   // ---- FEATURE 1: Pulses + FEATURE 5: Check-ins ----------------------------
@@ -140,6 +95,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
   const [whosAroundOpen, setWhosAroundOpen] = useState(false);
   const [pulses, setPulses] = useState<Pulse[]>([]);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
+  const [activeAds, setActiveAds] = useState<Advertisement[]>([]);
 
   // Set Vibe — local quick picker (no sheet, no persistence — just a visible tag)
   const [currentVibe, setCurrentVibe] = useState<string | null>(null);
@@ -167,7 +123,18 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
     if (!(isFirebaseConfigured && auth.currentUser?.emailVerified)) return;
     const unsubP = getPulses((list) => setPulses(list));
     const unsubC = getCheckIns((list) => setCheckins(list));
-    return () => { unsubP && unsubP(); unsubC && unsubC(); };
+    const unsubA = getActiveAds((list) => {
+      setActiveAds(list);
+      // Record impressions for new ads
+      list.forEach(ad => {
+        if (ad.id) recordAdImpression(ad.id);
+      });
+    });
+    return () => { 
+      unsubP && unsubP(); 
+      unsubC && unsubC(); 
+      unsubA && unsubA();
+    };
   }, []);
 
   const myUid = auth.currentUser?.uid;
@@ -206,17 +173,15 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
       })
   ), [checkins, mapCenter, myUid]);
 
-  const visibleMarkers = liveFriendLocations.length
-    ? liveFriendLocations.map((friend, index) => ({
-        id: friend.uid,
-        name: friend.displayName || 'Friend',
-        vibe: friend.location?.name || 'On campus',
-        image: friend.photoURL || friendMarkers[index % friendMarkers.length].image,
-        accent: friendMarkers[index % friendMarkers.length].accent,
-        lat: friend.location?.lat ?? friendMarkers[index % friendMarkers.length].lat,
-        lng: friend.location?.lng ?? friendMarkers[index % friendMarkers.length].lng,
-      }))
-    : friendMarkers;
+  const visibleMarkers = liveFriendLocations.map((friend) => ({
+    id: friend.uid,
+    name: friend.displayName || 'Friend',
+    vibe: friend.location?.name || 'On campus',
+    image: friend.photoURL || 'https://ui-avatars.com/api/?name=' + (friend.displayName || 'Friend'),
+    accent: 'ring-sky-400/60',
+    lat: friend.location?.lat,
+    lng: friend.location?.lng,
+  }));
 
   const markerData = useMemo(
     () =>
@@ -276,6 +241,21 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
               icon={createCheckinIcon(pin.location)}
               eventHandlers={{
                 click: () => openDmWithUser(pin.uid),
+              }}
+            />
+          ))}
+          {/* MONETIZATION — Map-based Ads */}
+          {activeAds.map((ad) => (
+            <Marker
+              key={`ad-${ad.id}`}
+              position={[ad.location.lat, ad.location.lng]}
+              icon={createAdIcon(ad.brandName, ad.imageUrl)}
+              eventHandlers={{
+                click: () => {
+                  if (ad.id) recordAdClick(ad.id);
+                  if (ad.ctaLink) window.open(ad.ctaLink, '_blank');
+                  toast.success(`Opening ${ad.brandName} promotion!`);
+                },
               }}
             />
           ))}
@@ -392,29 +372,42 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
 
       <aside className="absolute left-4 top-24 z-[999] hidden w-72 space-y-4 xl:block">
         <section className="campus-glass-card rounded-[28px] p-4">
-          <p className="text-sm font-bold text-slate-900">Nearby Events</p>
-          <div className="mt-4 space-y-3">
-            {nearbyEvents.map((event) => {
-              const Icon = event.icon;
-              return (
-                <div key={event.title} className="flex items-center gap-3">
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-2xl ${event.iconClass}`}>
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">{event.title}</p>
-                    <p className="text-[11px] text-slate-500">{event.subtitle}</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-bold text-slate-900">Nearby Events</p>
+            <button 
+              onClick={() => onNavigate?.('discover')}
+              className="text-[10px] font-bold text-sky-600 uppercase tracking-widest hover:text-sky-700"
+            >
+              See all
+            </button>
+          </div>
+          <div className="space-y-3">
+            {nearbyEvents.length > 0 ? (
+              nearbyEvents.map((event) => {
+                return (
+                  <div key={event.id} className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+                      <Sparkles className="h-4 w-4" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 truncate">{event.title}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{event.location} • {event.clubName}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <p className="text-xs text-slate-400 italic py-2">No live events nearby.</p>
+            )}
           </div>
         </section>
 
         <section className="campus-glass-card flex items-center justify-between rounded-[24px] px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">142 online</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
+              {liveFriendLocations.length > 0 ? `${liveFriendLocations.length} friends nearby` : 'Campus is active'}
+            </span>
           </div>
           <Users className="h-4 w-4 text-sky-500" />
         </section>
@@ -430,7 +423,9 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-slate-900">Campus is buzzing</p>
-              <p className="mt-1 text-xs text-slate-500">142 online, 2 live events nearby</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {liveFriendLocations.length} friends nearby, {nearbyEvents.length} events today
+              </p>
             </div>
             <button
               type="button"
@@ -590,5 +585,23 @@ function createMyInitialIcon(initial: string, vibeEmoji?: string) {
     `,
     iconSize: [52, 52],
     iconAnchor: [26, 26],
+  });
+}
+
+function createAdIcon(brandName: string, imageUrl: string) {
+  const safeUrl = imageUrl.replace(/"/g, '&quot;');
+  return L.divIcon({
+    className: 'campus-ad-marker',
+    html: `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-8px);">
+        <div style="position:absolute;inset:-4px;border-radius:12px;background:rgba(245,158,11,0.2);animation:campusMePulse 2s ease-out infinite;"></div>
+        <div style="position:relative;width:44px;height:44px;border-radius:12px;background:white;border:2.5px solid #f59e0b;box-shadow:0 8px 20px rgba(245,158,11,0.3);overflow:hidden;">
+          <img src="${safeUrl}" alt="${brandName}" style="width:100%;height:100%;object-fit:cover;" />
+          <div style="position:absolute;bottom:0;left:0;right:0;background:#f59e0b;color:white;font-size:7px;font-weight:900;text-align:center;padding:1px 0;text-transform:uppercase;letter-spacing:0.05em;">AD</div>
+        </div>
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
 }

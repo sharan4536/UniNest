@@ -187,6 +187,11 @@ export function EventCard({ event, userTimetable, onFindBuddy, onOpenChat }: Eve
             
             <div className="absolute bottom-0 left-0 right-0 p-8 space-y-4">
                 <div className="flex gap-2 font-sans">
+                    {event.isSponsored && (
+                        <span className="px-3 py-1 bg-amber-500/80 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white">
+                            Sponsored
+                        </span>
+                    )}
                     {event.vibeTags && event.vibeTags.map(tag => (
                         <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white">
                             {tag}
@@ -204,7 +209,9 @@ export function EventCard({ event, userTimetable, onFindBuddy, onOpenChat }: Eve
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-white/80">
                         <span className="text-lg">📍</span>
-                        <span className="text-xs font-medium">{event.location} • {formatTime(event.startTime)}</span>
+                        <span className="text-xs font-medium">
+                            {event.clubName} {event.isSponsored && '• Sponsored'} • {event.location} • {formatTime(event.startTime)}
+                        </span>
                     </div>
                     {/* Buddy Matching display inside card */}
                     <div className="flex items-center -space-x-3 cursor-pointer hover:scale-105 transition-transform" onClick={(e) => {e.stopPropagation(); onFindBuddy(event);}}>

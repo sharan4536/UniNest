@@ -10,6 +10,7 @@ import {
   Lock,
   MapPin,
   Save,
+  ShieldCheck,
   Sparkles,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -36,6 +37,7 @@ type CurrentUser = {
   bio?: string;
   interests?: string[];
   location?: { name?: string } | null;
+  isAdmin?: boolean;
   isDevelopmentUser?: boolean;
 } | null | undefined;
 
@@ -64,11 +66,13 @@ export function ProfilePage({
   onProfileUpdate,
   goToAbout,
   onLogout,
+  onNavigate,
 }: {
   currentUser?: CurrentUser;
   onProfileUpdate?: (updatedUser: CurrentUser) => void;
   goToAbout?: () => void;
   onLogout?: () => void;
+  onNavigate?: (page: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('schedule');
@@ -512,15 +516,29 @@ export function ProfilePage({
           Profile
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowPrivacySettings(true)}
-          className="rounded-full p-2 text-sky-500 transition-colors hover:bg-sky-100/60"
-          aria-label="Privacy settings"
-          data-testid="profile-privacy-btn"
-        >
-          <Lock className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {currentUser?.isAdmin && (
+            <button
+              type="button"
+              onClick={() => onNavigate?.('admin')}
+              className="flex items-center gap-1.5 rounded-full bg-sky-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-sky-600 active:scale-95"
+              aria-label="Admin Console"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Admin</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowPrivacySettings(true)}
+            className="rounded-full p-2 text-sky-500 transition-colors hover:bg-sky-100/60"
+            aria-label="Privacy settings"
+            data-testid="profile-privacy-btn"
+          >
+            <Lock className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Main content - normal flow, fills viewport, scrolls naturally */}

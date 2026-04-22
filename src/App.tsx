@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LoginPage } from './components/LoginPage';
+import { formatEmailToName } from './utils/nameUtils';
 import { HomePage } from './components/HomePage';
 import { ProfilePage } from './components/ProfilePage';
 import { AboutPage } from './components/AboutPage';
@@ -9,10 +10,12 @@ import { TimetablePage } from './components/TimetablePage';
 import { TimetableWidget } from './components/TimetableWidget';
 import { MessagesPage } from './components/MessagesPage';
 import { Navigation } from './components/Navigation';
+import { AdminPanel } from './components/AdminPanel';
 import { auth, isFirebaseConfigured } from './utils/firebase/client';
-import { getUserProfile, createUserProfile, getProfile, uploadUserPublicKey } from './utils/firebase/firestore';
+import { getUserProfile, createUserProfile, getProfile, uploadUserPublicKey, getAdminUser, getAllNotificationsRealtime } from './utils/firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { initializeE2EE } from './utils/crypto';
+import { Toaster, toast } from 'sonner';
 
 export default function App() {
   // Standalone widget route — short-circuits the main app shell.
@@ -22,10 +25,34 @@ export default function App() {
   }
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [viewedProfile, setViewedProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [lastNotificationId, setLastNotificationId] = useState<string | null>(null);
+
+  // Listen for global admin notifications
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+
+    const unsubscribe = getAllNotificationsRealtime((notifications) => {
+      if (notifications.length > 0) {
+        const latest = notifications[0]; // Ordered by createdAt desc
+        
+        // If it's a new notification we haven't seen in this session
+        if (lastNotificationId && latest.id !== lastNotificationId && latest.status === 'sent') {
+          toast(latest.title, {
+            description: latest.message,
+            duration: 5000,
+          });
+        }
+        setLastNotificationId(latest.id || null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [lastNotificationId]);
 
   // Handle authentication state changes and load user data
   useEffect(() => {
@@ -41,11 +68,11 @@ export default function App() {
             ]);
 
             if (userProfile || profileDoc) {
-              const resolvedName = profileDoc?.name
-                || userProfile?.displayName
-                || user.displayName
-                || user.email?.split('@')[0]
-                || 'User';
+              const resolvedName = formatEmailToName(profileDoc?.name || userProfile?.displayName || user.displayName || user.email);
+
+              // Check if user is admin
+              const adminData = await getAdminUser(user.uid);
+              setIsAdmin(!!adminData);
 
               setCurrentUser({
                 uid: user.uid,
@@ -56,6 +83,7 @@ export default function App() {
                 major: userProfile?.major || (profileDoc as any)?.major,
                 location: userProfile?.location,
                 photoURL: (profileDoc as any)?.photoURL || (userProfile as any)?.photoURL || user.photoURL || undefined,
+                isAdmin: !!adminData,
                 isDevelopmentUser: false
               });
               setIsLoggedIn(true);
@@ -66,10 +94,7 @@ export default function App() {
 
               // Prefer profile name if exists; otherwise fallback to auth/displayName/email
               const profileAfterCreate = await getProfile(user.uid).catch(() => null);
-              const fallbackName = profileAfterCreate?.name
-                || user.displayName
-                || user.email?.split('@')[0]
-                || 'User';
+              const fallbackName = formatEmailToName(profileAfterCreate?.name || user.displayName || user.email);
 
               setCurrentUser({
                 uid: user.uid,
@@ -96,7 +121,7 @@ export default function App() {
             // Fallback to basic auth data
             setCurrentUser({
               uid: user.uid,
-              name: user.displayName || user.email?.split('@')[0] || 'User',
+              name: formatEmailToName(user.displayName || user.email),
               email: user.email,
               isDevelopmentUser: false
             });
@@ -118,6 +143,7 @@ export default function App() {
         try {
           const userData = JSON.parse(savedUser);
           setCurrentUser({ ...userData, isDevelopmentUser: true });
+          setIsAdmin(!!userData.isAdmin);
           setIsLoggedIn(true);
         } catch (error) {
           console.error('Error parsing saved user data:', error);
@@ -129,6 +155,7 @@ export default function App() {
 
   const handleLogin = (userData: any) => {
     setCurrentUser(userData);
+    setIsAdmin(!!userData.isAdmin);
     setIsLoggedIn(true);
     setCurrentPage('home');
 
@@ -186,7 +213,7 @@ export default function App() {
           />
         );
       case 'profile':
-        return <ProfilePage currentUser={currentUser as any} onProfileUpdate={handleProfileUpdate} goToAbout={() => setCurrentPage('about')} onLogout={handleLogout} />;
+        return <ProfilePage currentUser={currentUser as any} onProfileUpdate={handleProfileUpdate} goToAbout={() => setCurrentPage('about')} onLogout={handleLogout} onNavigate={setCurrentPage} />;
       case 'about':
         return <AboutPage />;
       case 'discover':
@@ -208,6 +235,8 @@ export default function App() {
         );
       case 'friendProfile':
         return <FriendProfilePage user={viewedProfile as any} onBack={() => setCurrentPage('discover')} onMessage={() => setCurrentPage('messages')} />;
+      case 'admin':
+        return <AdminPanel />;
       default:
         return <HomePage currentUser={currentUser} />;
     }
@@ -215,6 +244,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground selection:bg-sky-100 selection:text-sky-900 md:flex-row pb-24 md:pb-0">
+      <Toaster position="top-right" />
       <Navigation
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}

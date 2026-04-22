@@ -1,8 +1,8 @@
 {
-  "name": "UniNest Timetable",
+  "name": "UniNest",
   "short_name": "UniNest",
-  "description": "Today's classes at a glance.",
-  "start_url": "/widget?size=medium",
+  "description": "The ultimate campus companion for VIT students.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

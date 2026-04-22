@@ -1,4 +1,5 @@
-import { auth, getFriends, getFriendTimetable, type ClassItem, type UserProfile } from './firebase/firestore';
+import { getFriends, getFriendTimetable, type ClassItem, type UserProfile } from './firebase/firestore';
+import { auth } from './firebase/client';
 
 /**
  * Friend schedule loader with in-memory cache.

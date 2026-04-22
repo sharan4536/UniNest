@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { formatEmailToName } from '../utils/nameUtils';
 import { CheckIn, getCheckIns, getProfile, UserProfile } from '../utils/firebase/firestore';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from './ui/drawer';
 
@@ -73,12 +74,12 @@ export function WhosAroundPanel({ open, onOpenChange }: WhosAroundPanelProps) {
                   >
                     <Avatar className="w-10 h-10">
                       <img src={profile?.photoURL} alt={profile?.displayName} />
-                      <AvatarFallback>{profile?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                      <AvatarFallback>{formatEmailToName(profile?.email).charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800">
-                        {profile?.displayName || 'Someone'}
+                        {formatEmailToName(profile?.displayName || profile?.email)}
                       </p>
                       <p className="text-xs text-gray-600 line-clamp-1">
                         {checkin.location}
