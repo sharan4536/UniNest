@@ -200,7 +200,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
 
   return (
     <div className="campus-pulse-shell relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.75),_rgba(241,247,251,0.2)_35%,_rgba(9,15,18,0.12)_100%)] text-slate-900">
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 isolate z-0">
         <MapContainer
           center={[mapCenter.lat, mapCenter.lng]}
           zoom={16}
@@ -252,7 +252,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(45,183,242,0.22),transparent_28%),radial-gradient(circle_at_80%_30%,rgba(167,169,255,0.2),transparent_26%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.85),transparent_38%)]" />
       </div>
 
-      <header className="absolute inset-x-0 top-0 z-30 px-4 pt-4 sm:px-6">
+      <header className="absolute inset-x-0 top-0 z-[1000] px-4 pt-4 sm:px-6">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -306,7 +306,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
         )}
       </header>
 
-      <aside className="absolute left-4 top-24 z-20 hidden w-72 space-y-4 xl:block">
+      <aside className="absolute left-4 top-24 z-[999] hidden w-72 space-y-4 xl:block">
         <section className="campus-glass-card rounded-[28px] p-4">
           <p className="text-sm font-bold text-slate-900">Nearby Events</p>
           <div className="mt-4 space-y-3">
@@ -336,7 +336,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
         </section>
       </aside>
 
-      <div className="absolute inset-x-0 bottom-32 z-20 px-4 sm:px-6 xl:hidden">
+      <div className="absolute inset-x-0 bottom-32 z-[999] px-4 sm:px-6 xl:hidden">
         <div className="campus-glass-card mx-auto max-w-md rounded-[28px] p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -357,7 +357,7 @@ export function HomePage({ currentUser, onOpenProfile, onNavigate }: HomePagePro
       </div>
 
       {/* FEATURES 1 + 5 — Floating action stack (bottom-right) */}
-      <div className="absolute bottom-36 right-4 z-30 flex flex-col items-end gap-3 xl:bottom-8">
+      <div className="absolute bottom-36 right-4 z-[1000] flex flex-col items-end gap-3 xl:bottom-8">
         <button
           type="button"
           onClick={() => setCheckinSheetOpen(true)}
